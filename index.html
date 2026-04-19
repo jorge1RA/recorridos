@@ -314,7 +314,8 @@
         throw new Error('Usuario sin rol asignado');
       }
 
-    } catch (e) {
+   } catch (e) {
+      console.error('ERROR DETALLADO:', e.code, e.message);
       error.style.display = 'block';
       btn.disabled = false;
       btn.innerHTML = 'Entrar';
