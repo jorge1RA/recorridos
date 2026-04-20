@@ -1,1 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECORRIDOS — Administrador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --negro:#0a0a0a; --blanco:#f0ede8; --purpura:#7c3aed; --purpura-claro:#a78bfa;
+      --verde:#2d6a4f; --verde-claro:#52b788; --amarillo:#f4a261;
+      --rojo:#e63946; --gris:#2a2a2a; --gris-claro:#6b6b6b;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; overflow:hidden; }
+    body { background:var(--negro); color:var(--blanco); font-family:'IBM Plex Sans',sans-serif; display:flex; flex-direction:column; }
 
+    /* ── TOPBAR ── */
+    .topbar { background:#0f0f0f; border-bottom:1px solid rgba(255,255,255,0.07); padding:12px 20px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .topbar-titulo { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:4px; }
+    .topbar-right { display:flex; align-items:center; gap:10px; }
+    .rol-badge { background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.4); color:var(--purpura-claro); border-radius:20px; padding:4px 12px; font-size:11px; letter-spacing:2px; text-transform:uppercase; font-weight:600; }
+    .btn-salir { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--gris-claro); border-radius:8px; padding:6px 12px; font-size:12px; font-family:'IBM Plex Sans',sans-serif; cursor:pointer; letter-spacing:1px; }
+
+    /* ── TABS ── */
+    .tabs { display:flex; background:#0f0f0f; border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; }
+    .tab { flex:1; padding:12px; text-align:center; font-size:11px; font-weight:600; letter-spacing:2px; text-transform:uppercase; cursor:pointer; color:var(--gris-claro); border-bottom:2px solid transparent; transition:all 0.2s; }
+    .tab.activo { color:var(--purpura-claro); border-bottom-color:var(--purpura-claro); }
+
+    /* ── CONTENIDO TABS ── */
+    .tab-contenido { flex:1; overflow-y:auto; display:none; }
+    .tab-contenido.activo { display:block; }
+    #tab-mapa { display:none; }
+    #tab-mapa.activo { display:flex; flex-direction:column; }
+
+    /* ── TAB RECORRIDOS ── */
+    .seccion-header { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .seccion-titulo { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; }
+    .btn-nuevo { background:var(--purpura); color:white; border:none; border-radius:8px; padding:10px 16px; font-family:'IBM Plex Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:1px; cursor:pointer; }
+    .lista-admin { padding:16px 20px; display:flex; flex-direction:column; gap:10px; }
+    .tarjeta-admin { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px 16px; }
+    .tarjeta-admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .tarjeta-num { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:2px; color:var(--purpura-claro); }
+    .tarjeta-nombre { font-size:14px; font-weight:500; flex:1; margin:0 10px; }
+    .tarjeta-acciones { display:flex; gap:6px; }
+    .btn-editar { background:rgba(124,58,237,0.15); border:1px solid rgba(124,58,237,0.3); color:var(--purpura-claro); border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; }
+    .btn-borrar { background:rgba(230,57,70,0.1); border:1px solid rgba(230,57,70,0.3); color:var(--rojo); border-radius:6px; padding:6px 10px; font-size:11px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; }
+    .tarjeta-meta { font-size:12px; color:var(--gris-claro); }
+    .tarjeta-zona { font-size:12px; color:var(--purpura-claro); margin-top:2px; }
+
+    /* ── TAB MAPA ── */
+    #mapa { flex:1; }
+    .leyenda-mapa { padding:10px 16px; background:#0f0f0f; border-top:1px solid rgba(255,255,255,0.07); display:flex; gap:16px; flex-shrink:0; }
+    .leyenda-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--gris-claro); }
+    .leyenda-dot { width:10px; height:10px; border-radius:50%; }
+
+    /* ── TAB INCIDENCIAS ── */
+    .tarjeta-incidencia { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+    .incidencia-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
+    .incidencia-tipo { font-size:13px; font-weight:600; color:var(--amarillo); }
+    .incidencia-estado { font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 8px; border-radius:10px; font-weight:600; }
+    .estado-pendiente { background:rgba(244,162,97,0.15); color:var(--amarillo); }
+    .estado-resuelta  { background:rgba(82,183,136,0.15); color:var(--verde-claro); }
+    .incidencia-meta { font-size:12px; color:var(--gris-claro); line-height:1.6; }
+    .incidencia-foto { width:100%; border-radius:8px; margin-top:10px; max-height:160px; object-fit:cover; display:none; }
+    .btn-resolver { background:var(--verde); color:white; border:none; border-radius:8px; padding:8px 14px; font-size:11px; font-weight:600; cursor:pointer; margin-top:10px; font-family:'IBM Plex Sans',sans-serif; letter-spacing:1px; }
+
+    /* ── MODAL CREAR/EDITAR RECORRIDO ── */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; z-index:200; overflow-y:auto; }
+    .modal-overlay.activo { display:block; }
+    .modal-editor { background:#111; min-height:100vh; padding:20px; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .modal-titulo-editor { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:3px; color:var(--purpura-claro); }
+    .btn-cerrar-modal { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--gris-claro); border-radius:8px; padding:8px 14px; font-size:12px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; }
+
+    .campo-editor { margin-bottom:16px; }
+    .campo-editor label { display:block; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--gris-claro); margin-bottom:8px; font-weight:500; }
+    .campo-editor input, .campo-editor select {
+      width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      border-radius:10px; padding:12px 14px; font-family:'IBM Plex Sans',sans-serif;
+      font-size:14px; color:var(--blanco); outline:none; appearance:none;
+    }
+
+    .contenedores-editor { display:flex; flex-direction:column; gap:8px; }
+    .item-contenedor-editor { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+    .cont-drag { color:var(--gris-claro); font-size:16px; cursor:grab; }
+    .cont-inputs { flex:1; display:flex; flex-direction:column; gap:6px; }
+    .cont-inputs input { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 10px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; color:var(--blanco); outline:none; }
+    .cont-inputs input::placeholder { color:var(--gris-claro); }
+    .btn-quitar-cont { background:rgba(230,57,70,0.15); border:1px solid rgba(230,57,70,0.3); color:var(--rojo); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; flex-shrink:0; }
+    .btn-add-cont { width:100%; background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.15); border-radius:10px; padding:14px; color:var(--gris-claro); font-family:'IBM Plex Sans',sans-serif; font-size:13px; cursor:pointer; margin-top:8px; transition:all 0.2s; }
+    .btn-add-cont:hover { border-color:var(--purpura-claro); color:var(--purpura-claro); }
+    .btn-guardar { width:100%; background:var(--purpura); color:white; border:none; border-radius:12px; padding:16px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; letter-spacing:1px; cursor:pointer; margin-top:16px; }
+
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-titulo">RECORRIDOS</div>
+  <div class="topbar-right">
+    <span class="rol-badge">Admin</span>
+    <span style="font-size:13px;color:var(--gris-claro);" id="admin-nombre"></span>
+    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab activo" onclick="cambiarTab('recorridos')">🗺 Recorridos</div>
+  <div class="tab" onclick="cambiarTab('mapa')">📍 Mapa en vivo</div>
+  <div class="tab" onclick="cambiarTab('incidencias')">⚠ Incidencias</div>
+</div>
+
+<!-- TAB RECORRIDOS -->
+<div class="tab-contenido activo" id="tab-recorridos">
+  <div class="seccion-header">
+    <div class="seccion-titulo">RECORRIDOS</div>
+    <button class="btn-nuevo" onclick="abrirEditor(null)">+ Nuevo</button>
+  </div>
+  <div class="lista-admin" id="lista-recorridos">
+    <div style="text-align:center;color:var(--gris-claro);padding:40px 0;">Cargando...</div>
+  </div>
+</div>
+
+<!-- TAB MAPA EN VIVO -->
+<div class="tab-contenido" id="tab-mapa">
+  <div id="mapa"></div>
+  <div class="leyenda-mapa">
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#52b788"></div> Conductor en ruta</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#f4a261"></div> En vertedero</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#e63946"></div> Accidente / avería</div>
+  </div>
+</div>
+
+<!-- TAB INCIDENCIAS -->
+<div class="tab-contenido" id="tab-incidencias">
+  <div class="seccion-header">
+    <div class="seccion-titulo">INCIDENCIAS</div>
+    <div style="font-size:12px;color:var(--gris-claro);" id="contador-incidencias">Cargando...</div>
+  </div>
+  <div class="lista-admin" id="lista-incidencias">
+    <div style="text-align:center;color:var(--gris-claro);padding:40px 0;">Cargando...</div>
+  </div>
+</div>
+
+<!-- MODAL EDITOR DE RECORRIDO -->
+<div class="modal-overlay" id="modal-editor">
+  <div class="modal-editor">
+    <div class="modal-header">
+      <div class="modal-titulo-editor" id="editor-titulo">NUEVO RECORRIDO</div>
+      <button class="btn-cerrar-modal" onclick="cerrarEditor()">✕ Cerrar</button>
+    </div>
+
+    <div class="campo-editor">
+      <label>Número de recorrido</label>
+      <input type="number" id="ed-numero" placeholder="Ej: 1" min="1" max="11">
+    </div>
+    <div class="campo-editor">
+      <label>Nombre del recorrido</label>
+      <input type="text" id="ed-nombre" placeholder="Ej: Zona Norte">
+    </div>
+    <div class="campo-editor">
+      <label>Zona / descripción</label>
+      <input type="text" id="ed-zona" placeholder="Ej: Barrio San Miguel, calles principales">
+    </div>
+    <div class="campo-editor">
+      <label>Teléfono del superior</label>
+      <input type="tel" id="ed-tel-superior" placeholder="Ej: 956000000">
+    </div>
+    <div class="campo-editor">
+      <label>Coordenadas vertedero (lat,lng)</label>
+      <input type="text" id="ed-vertedero" placeholder="Ej: 36.1234,-5.4321">
+    </div>
+
+    <div class="campo-editor">
+      <label>Contenedores y paradas (en orden de recogida)</label>
+      <div class="contenedores-editor" id="lista-contenedores-editor"></div>
+      <button class="btn-add-cont" onclick="addContenedor()">+ Añadir contenedor / parada</button>
+    </div>
+
+    <button class="btn-guardar" id="btn-guardar" onclick="guardarRecorrido()">Guardar recorrido</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:"AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",
+  authDomain:"recorridos-app-f362a.firebaseapp.com",
+  projectId:"recorridos-app-f362a",
+  storageBucket:"recorridos-app-f362a.firebasestorage.app",
+  messagingSenderId:"375824896184",
+  appId:"1:375824896184:web:9d1bcbe4df81e651f9644d"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let usuarioActual=null, recorridoEditandoId=null;
+let mapaLeaflet=null, marcadoresConductores={};
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href='../index.html'; return; }
+  const snap=await getDoc(doc(db,'usuarios',user.uid));
+  if (!snap.exists()||snap.data().rol!=='administrador') { window.location.href='../index.html'; return; }
+  usuarioActual={uid:user.uid,...snap.data()};
+  document.getElementById('admin-nombre').textContent=usuarioActual.nombre||'';
+  cargarRecorridos();
+  escucharIncidencias();
+});
+
+// ── Tabs ───────────────────────────────────────────────
+window.cambiarTab = function(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const ids=['recorridos','mapa','incidencias'];
+    t.classList.toggle('activo', ids[i]===tab);
+  });
+  document.querySelectorAll('.tab-contenido').forEach(c=>c.classList.remove('activo'));
+  document.getElementById(`tab-${tab}`).classList.add('activo');
+  if (tab==='mapa') iniciarMapa();
+  if (tab==='incidencias') cargarIncidencias();
+};
+
+// ── Recorridos ─────────────────────────────────────────
+async function cargarRecorridos() {
+  const lista=document.getElementById('lista-recorridos');
+  try {
+    const snap=await getDocs(collection(db,'recorridos'));
+    if (snap.empty) {
+      lista.innerHTML=`<div style="text-align:center;color:var(--gris-claro);padding:40px 0;">No hay recorridos aún.<br><span style="font-size:12px;opacity:0.6;">Pulsa + Nuevo para crear el primero.</span></div>`;
+      return;
+    }
+    lista.innerHTML='';
+    const docs=[];
+    snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(a.numero||0)-(b.numero||0));
+    docs.forEach(r=>{
+      const div=document.createElement('div');
+      div.className='tarjeta-admin';
+      div.innerHTML=`
+        <div class="tarjeta-admin-header">
+          <div class="tarjeta-num">R${r.numero||'?'}</div>
+          <div class="tarjeta-nombre">${r.nombre||'Sin nombre'}</div>
+          <div class="tarjeta-acciones">
+            <button class="btn-editar" onclick="abrirEditor('${r.id}')">Editar</button>
+            <button class="btn-borrar" onclick="borrarRecorrido('${r.id}')">✕</button>
+          </div>
+        </div>
+        <div class="tarjeta-meta">${(r.contenedores||[]).length} contenedores</div>
+        ${r.zona?`<div class="tarjeta-zona">${r.zona}</div>`:''}`;
+      lista.appendChild(div);
+    });
+  } catch(e) {
+    lista.innerHTML=`<div style="text-align:center;color:var(--rojo);padding:40px 0;">Error al cargar</div>`;
+  }
+}
+
+window.borrarRecorrido = async function(id) {
+  if (!confirm('¿Borrar este recorrido? Esta acción no se puede deshacer.')) return;
+  await deleteDoc(doc(db,'recorridos',id));
+  cargarRecorridos();
+};
+
+// ── Editor de recorrido ────────────────────────────────
+window.abrirEditor = async function(id) {
+  recorridoEditandoId=id;
+  document.getElementById('editor-titulo').textContent=id?'EDITAR RECORRIDO':'NUEVO RECORRIDO';
+  document.getElementById('lista-contenedores-editor').innerHTML='';
+  document.getElementById('ed-numero').value='';
+  document.getElementById('ed-nombre').value='';
+  document.getElementById('ed-zona').value='';
+  document.getElementById('ed-tel-superior').value='';
+  document.getElementById('ed-vertedero').value='';
+
+  if (id) {
+    const snap=await getDoc(doc(db,'recorridos',id));
+    if (snap.exists()) {
+      const r=snap.data();
+      document.getElementById('ed-numero').value=r.numero||'';
+      document.getElementById('ed-nombre').value=r.nombre||'';
+      document.getElementById('ed-zona').value=r.zona||'';
+      document.getElementById('ed-tel-superior').value=r.telefonoSuperior||'';
+      const cv=r.coordsVertedero;
+      if (cv) document.getElementById('ed-vertedero').value=`${cv.lat},${cv.lng}`;
+      (r.contenedores||[]).forEach(c=>addContenedor(c));
+    }
+  } else {
+    addContenedor();
+  }
+  document.getElementById('modal-editor').classList.add('activo');
+};
+
+window.cerrarEditor = function() {
+  document.getElementById('modal-editor').classList.remove('activo');
+};
+
+window.addContenedor = function(datos=null) {
+  const lista=document.getElementById('lista-contenedores-editor');
+  const idx=lista.children.length;
+  const div=document.createElement('div');
+  div.className='item-contenedor-editor';
+  div.dataset.idx=idx;
+  div.innerHTML=`
+    <div class="cont-drag">⠿</div>
+    <div class="cont-inputs">
+      <input type="text" placeholder="Nº contenedor (ej: C-001)" class="inp-num" value="${datos?.numero||''}">
+      <input type="text" placeholder="Calle / dirección exacta" class="inp-calle" value="${datos?.calle||''}">
+      <input type="text" placeholder="Nota (ej: acceso en marcha atrás)" class="inp-nota" value="${datos?.nota||''}">
+    </div>
+    <button class="btn-quitar-cont" onclick="this.parentElement.remove()">✕</button>`;
+  lista.appendChild(div);
+};
+
+window.guardarRecorrido = async function() {
+  const btn=document.getElementById('btn-guardar');
+  const numero=parseInt(document.getElementById('ed-numero').value)||0;
+  const nombre=document.getElementById('ed-nombre').value.trim();
+  if (!nombre) { alert('El nombre del recorrido es obligatorio'); return; }
+
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Guardando...';
+
+  const items=document.querySelectorAll('#lista-contenedores-editor .item-contenedor-editor');
+  const contenedores=Array.from(items).map(it=>({
+    numero: it.querySelector('.inp-num').value.trim(),
+    calle:  it.querySelector('.inp-calle').value.trim(),
+    nota:   it.querySelector('.inp-nota').value.trim(),
+  })).filter(c=>c.calle);
+
+  const vertederoStr=document.getElementById('ed-vertedero').value.trim();
+  let coordsVertedero=null;
+  if (vertederoStr) {
+    const [lat,lng]=vertederoStr.split(',').map(Number);
+    if (!isNaN(lat)&&!isNaN(lng)) coordsVertedero={lat,lng};
+  }
+
+  const datos={
+    numero, nombre,
+    zona:   document.getElementById('ed-zona').value.trim(),
+    telefonoSuperior: document.getElementById('ed-tel-superior').value.trim(),
+    coordsVertedero,
+    contenedores,
+    actualizadoEn: serverTimestamp()
+  };
+
+  try {
+    if (recorridoEditandoId) {
+      await updateDoc(doc(db,'recorridos',recorridoEditandoId), datos);
+    } else {
+      await addDoc(collection(db,'recorridos'), datos);
+    }
+    cerrarEditor();
+    cargarRecorridos();
+  } catch(e) {
+    alert('Error al guardar: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='Guardar recorrido';
+  }
+};
+
+// ── Mapa en vivo ───────────────────────────────────────
+function iniciarMapa() {
+  if (mapaLeaflet) { mapaLeaflet.invalidateSize(); return; }
+  mapaLeaflet=L.map('mapa').setView([36.14,-5.45],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap'
+  }).addTo(mapaLeaflet);
+  escucharLocalizaciones();
+}
+
+function escucharLocalizaciones() {
+  onSnapshot(collection(db,'localizacion'),(snap)=>{
+    snap.forEach(d=>{
+      const datos=d.data();
+      const uid=d.id;
+      const lat=datos.lat, lng=datos.lng;
+      if (!lat||!lng) return;
+
+      const estado=datos.estado||'en_ruta';
+      const color=estado==='accidente'?'#e63946':estado==='averia'?'#e63946':estado==='vertedero'?'#f4a261':'#52b788';
+
+      const icono=L.divIcon({
+        html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px ${color}"></div>`,
+        className:'', iconAnchor:[7,7]
+      });
+
+      if (marcadoresConductores[uid]) {
+        marcadoresConductores[uid].setLatLng([lat,lng]).setIcon(icono);
+        marcadoresConductores[uid].setPopupContent(popupTexto(datos));
+      } else {
+        marcadoresConductores[uid]=L.marker([lat,lng],{icon:icono})
+          .addTo(mapaLeaflet)
+          .bindPopup(popupTexto(datos));
+      }
+    });
+  });
+}
+
+function popupTexto(d) {
+  const estados={en_ruta:'En ruta',vertedero:'En vertedero',averia:'Avería',accidente:'⚠ ACCIDENTE'};
+  return `<b>${d.conductorNombre||'Conductor'}</b><br>
+    Estado: ${estados[d.estado||'en_ruta']||d.estado}<br>
+    Contenedor: ${d.indexContenedor+1||'?'}<br>
+    ${d.timestamp?.toDate?d.timestamp.toDate().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):''}`;
+}
+
+// ── Incidencias ────────────────────────────────────────
+let incidenciasDocs=[];
+
+function escucharIncidencias() {
+  onSnapshot(collection(db,'incidencias'),(snap)=>{
+    incidenciasDocs=[];
+    snap.forEach(d=>incidenciasDocs.push({id:d.id,...d.data()}));
+    incidenciasDocs.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    const pendientes=incidenciasDocs.filter(i=>i.estado==='pendiente').length;
+    document.getElementById('contador-incidencias').textContent=
+      `${pendientes} pendiente${pendientes!==1?'s':''} · ${incidenciasDocs.length} total`;
+    // Actualizar badge en tab
+    const tabInc=document.querySelectorAll('.tab')[2];
+    tabInc.textContent=pendientes?`⚠ Incidencias (${pendientes})`:'⚠ Incidencias';
+  });
+}
+
+async function cargarIncidencias() {
+  renderIncidencias();
+}
+
+function renderIncidencias() {
+  const lista=document.getElementById('lista-incidencias');
+  if (!incidenciasDocs.length) {
+    lista.innerHTML=`<div style="text-align:center;color:var(--gris-claro);padding:40px 0;">No hay incidencias registradas</div>`;
+    return;
+  }
+  lista.innerHTML=incidenciasDocs.map(inc=>`
+    <div class="tarjeta-incidencia">
+      <div class="incidencia-header">
+        <div>
+          <div class="incidencia-tipo">${inc.tipoEtiqueta||inc.tipo||'Incidencia'}</div>
+          <div style="font-size:11px;color:var(--gris-claro);margin-top:2px;">${inc.fechaTexto||''}</div>
+        </div>
+        <span class="incidencia-estado ${inc.estado==='pendiente'?'estado-pendiente':'estado-resuelta'}">
+          ${inc.estado==='pendiente'?'Pendiente':'Resuelta'}
+        </span>
+      </div>
+      <div class="incidencia-meta">
+        <div>Inspector: ${inc.inspectorNombre||'—'}</div>
+        <div>Recorrido: ${inc.recorridoNombre||inc.recorridoId||'—'}</div>
+        ${inc.contenedorRef?.calle?`<div>Contenedor: ${inc.contenedorRef.numero||''} · ${inc.contenedorRef.calle}</div>`:''}
+        ${inc.descripcion?`<div style="margin-top:4px;color:var(--blanco);">${inc.descripcion}</div>`:''}
+      </div>
+      ${inc.foto?`<img class="incidencia-foto" src="${inc.foto}" style="display:block" alt="Foto incidencia">`:''}
+      ${inc.coords?`<div style="font-size:11px;color:var(--gris-claro);margin-top:6px;">📍 <a href="https://maps.google.com/?q=${inc.coords.lat},${inc.coords.lng}" target="_blank" style="color:var(--purpura-claro);">Ver en mapa</a></div>`:''}
+      ${inc.estado==='pendiente'?`<button class="btn-resolver" onclick="resolverIncidencia('${inc.id}')">✓ Marcar como resuelta</button>`:''}
+    </div>`).join('');
+}
+
+window.resolverIncidencia = async function(id) {
+  await updateDoc(doc(db,'incidencias',id),{estado:'resuelta'});
+};
+
+window.cerrarSesion = async function() {
+  await signOut(auth);
+  window.location.href='../index.html';
+};
+</script>
+</body>
+</html>
