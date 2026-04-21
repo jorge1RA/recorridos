@@ -516,7 +516,7 @@ function iniciarGPS(){
         timestamp:serverTimestamp(),conductorNombre:usuario.nombre
       });
     }catch(e){}
-  },{enableHighAccuracy:true,maximumAge:8000});
+  },err=>console.warn('GPS error:',err),{enableHighAccuracy:true,maximumAge:8000});
 }
 
 // ── MODALES ──
