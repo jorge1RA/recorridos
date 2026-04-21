@@ -7,168 +7,267 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --negro: #0a0a0a; --blanco: #f0ede8; --verde: #2d6a4f;
-      --verde-claro: #52b788; --verde-oscuro: #1b4332;
-      --amarillo: #f4a261; --rojo: #e63946; --gris: #3a3a3a; --gris-claro: #6b6b6b;
+      --negro:#0a0a0a; --blanco:#f0ede8; --verde:#2d6a4f;
+      --verde-claro:#52b788; --verde-oscuro:#1b4332;
+      --amarillo:#f4a261; --rojo:#e63946;
+      --gris:#3a3a3a; --gris-claro:#6b6b6b;
     }
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html, body { height:100%; overflow:hidden; }
-    body { background:var(--negro); color:var(--blanco); font-family:'IBM Plex Sans',sans-serif; }
+    html, body { height:100%; }
+    body {
+      background:var(--negro); color:var(--blanco);
+      font-family:'IBM Plex Sans',sans-serif;
+      /* Evitar scroll rebote en iOS */
+      overscroll-behavior:none;
+    }
 
-    #pantalla-selector { height:100vh; display:flex; flex-direction:column; animation:fadeIn 0.4s ease; }
-    .cabecera { padding:20px 20px 0; display:flex; align-items:center; justify-content:space-between; }
+    /* ══ PANTALLAS ══ */
+    .pantalla {
+      position:fixed; inset:0;
+      display:flex; flex-direction:column;
+      background:var(--negro);
+      transition:opacity 0.3s;
+    }
+    .pantalla.oculta { opacity:0; pointer-events:none; }
+
+    /* ══ SELECTOR ══ */
+    .cabecera {
+      padding: env(safe-area-inset-top, 16px) 20px 0;
+      padding-top: max(env(safe-area-inset-top), 16px);
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
     .saludo { font-size:13px; color:var(--verde-claro); letter-spacing:1px; text-transform:uppercase; font-weight:500; }
-    .btn-salir { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--gris-claro); border-radius:8px; padding:8px 14px; font-size:12px; font-family:'IBM Plex Sans',sans-serif; cursor:pointer; letter-spacing:1px; text-transform:uppercase; }
-    .titulo-selector { padding:24px 20px 8px; font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:4px; line-height:1; }
-    .subtitulo-selector { padding:0 20px 24px; font-size:13px; color:var(--gris-claro); }
-    .lista-recorridos { flex:1; overflow-y:auto; padding:0 20px 20px; display:flex; flex-direction:column; gap:12px; }
-    .tarjeta-recorrido { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px 20px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:space-between; position:relative; overflow:hidden; }
-    .tarjeta-recorrido:active { transform:scale(0.98); background:rgba(82,183,136,0.08); }
-    .recorrido-numero { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; color:var(--verde-claro); line-height:1; }
-    .recorrido-nombre { font-size:15px; font-weight:500; margin:4px 0 2px; color:var(--blanco); }
-    .recorrido-meta { font-size:12px; color:var(--gris-claro); }
-    .recorrido-flecha { font-size:20px; color:var(--gris-claro); margin-left:12px; }
+    .btn-salir { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--gris-claro); border-radius:8px; padding:8px 14px; font-size:12px; font-family:'IBM Plex Sans',sans-serif; cursor:pointer; }
+    .titulo-sel { padding:20px 20px 6px; font-family:'Bebas Neue',sans-serif; font-size:36px; letter-spacing:4px; line-height:1; }
+    .sub-sel { padding:0 20px 20px; font-size:13px; color:var(--gris-claro); }
+    .lista-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 20px; padding-bottom:env(safe-area-inset-bottom,20px); display:flex; flex-direction:column; gap:12px; }
 
-    #pantalla-ruta { height:100vh; flex-direction:column; display:none; }
-    .barra-ruta { background:var(--verde-oscuro); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
-    .ruta-titulo { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; color:var(--blanco); }
-    .ruta-progreso-texto { font-size:12px; color:rgba(240,237,232,0.6); text-align:right; }
-    .barra-progreso-wrap { height:3px; background:rgba(255,255,255,0.08); flex-shrink:0; }
-    .barra-progreso-fill { height:100%; background:var(--verde-claro); transition:width 0.4s ease; }
-    .zona-contenedor { flex:1; padding:16px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
-    .contenedor-actual { background:rgba(82,183,136,0.1); border:2px solid var(--verde-claro); border-radius:16px; padding:20px; }
-    .etiqueta-actual { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--verde-claro); font-weight:600; margin-bottom:8px; }
-    .numero-contenedor { font-family:'Bebas Neue',sans-serif; font-size:56px; letter-spacing:4px; color:var(--blanco); line-height:1; }
-    .calle-contenedor { font-size:16px; font-weight:500; color:var(--blanco); margin-top:6px; }
-    .instruccion-contenedor { font-size:13px; color:rgba(240,237,232,0.6); margin-top:4px; line-height:1.5; }
-    .btn-recoger { width:100%; background:var(--verde); color:var(--blanco); border:none; border-radius:14px; padding:20px; font-family:'IBM Plex Sans',sans-serif; font-size:16px; font-weight:600; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.15s; flex-shrink:0; box-shadow:0 4px 20px rgba(45,106,79,0.5); }
+    .tarjeta-rec {
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      border-radius:14px; padding:18px 20px; cursor:pointer;
+      display:flex; align-items:center; justify-content:space-between;
+      -webkit-user-select:none; user-select:none;
+    }
+    .tarjeta-rec:active { background:rgba(82,183,136,0.1); border-color:rgba(82,183,136,0.3); }
+    .rec-num { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; color:var(--verde-claro); line-height:1; }
+    .rec-nombre { font-size:15px; font-weight:500; margin:4px 0 2px; }
+    .rec-meta { font-size:12px; color:var(--gris-claro); }
+
+    /* ══ RUTA ══ */
+    .barra-top {
+      background:var(--verde-oscuro);
+      padding: max(env(safe-area-inset-top),0px) 16px 12px;
+      padding-top: max(env(safe-area-inset-top), 12px);
+      flex-shrink:0;
+    }
+    .barra-top-fila { display:flex; align-items:center; justify-content:space-between; }
+    .ruta-nom { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:3px; }
+    .progreso-txt { font-size:12px; color:rgba(240,237,232,0.65); text-align:right; }
+    .voz-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(82,183,136,0.2); border:1px solid rgba(82,183,136,0.4); border-radius:20px; padding:3px 9px; font-size:11px; color:var(--verde-claro); margin-top:4px; }
+    .voz-dot { width:5px; height:5px; border-radius:50%; background:var(--verde-claro); animation:pulso 1.5s ease-in-out infinite; }
+
+    .prog-bar { height:3px; background:rgba(255,255,255,0.08); flex-shrink:0; }
+    .prog-fill { height:100%; background:var(--verde-claro); transition:width 0.4s; }
+
+    /* Zona scrollable de la ruta */
+    .zona-ruta {
+      flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding:14px 16px 8px;
+      display:flex; flex-direction:column; gap:12px;
+    }
+
+    .caja-actual {
+      background:rgba(82,183,136,0.1); border:2px solid var(--verde-claro);
+      border-radius:16px; padding:18px;
+    }
+    .etiq-actual { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--verde-claro); font-weight:600; margin-bottom:6px; }
+    .num-cont { font-family:'Bebas Neue',sans-serif; font-size:52px; letter-spacing:4px; line-height:1; }
+    .calle-cont { font-size:15px; font-weight:500; margin-top:5px; line-height:1.3; }
+    .nota-cont { font-size:12px; color:rgba(240,237,232,0.6); margin-top:4px; line-height:1.4; }
+
+    .prox-titulo { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--gris-claro); font-weight:600; }
+    .prox-lista { display:flex; flex-direction:column; gap:7px; }
+    .prox-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:10px 13px; display:flex; align-items:center; gap:11px; }
+    .prox-item.ok { opacity:0.4; }
+    .prox-n { font-family:'Bebas Neue',sans-serif; font-size:19px; color:var(--verde-claro); min-width:38px; letter-spacing:2px; }
+    .prox-info { flex:1; }
+    .prox-calle { font-size:13px; font-weight:500; }
+    .prox-nota  { font-size:11px; color:var(--gris-claro); margin-top:1px; }
+    .check-ok { width:22px; height:22px; border-radius:50%; background:var(--verde-claro); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+
+    /* Botón recogido — fijo al fondo */
+    .fondo-ruta {
+      flex-shrink:0; padding:10px 16px;
+      padding-bottom: max(env(safe-area-inset-bottom), 10px);
+      background:var(--negro); border-top:1px solid rgba(255,255,255,0.06);
+    }
+
+    .btn-recoger {
+      width:100%; background:var(--verde); color:var(--blanco); border:none;
+      border-radius:14px; padding:18px;
+      font-family:'IBM Plex Sans',sans-serif; font-size:16px; font-weight:600;
+      letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+      box-shadow:0 4px 20px rgba(45,106,79,0.5);
+      transition:background 0.15s, transform 0.1s;
+    }
     .btn-recoger:active { transform:scale(0.97); background:var(--verde-claro); }
-    .proximos-titulo { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--gris-claro); font-weight:600; }
-    .lista-proximos { display:flex; flex-direction:column; gap:8px; }
-    .item-proximo { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
-    .item-proximo.recogido { opacity:0.4; border-color:transparent; }
-    .proximo-num { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--verde-claro); min-width:40px; letter-spacing:2px; }
-    .proximo-info { flex:1; }
-    .proximo-calle { font-size:13px; font-weight:500; }
-    .proximo-nota  { font-size:11px; color:var(--gris-claro); margin-top:2px; }
-    .check-recogido { width:22px; height:22px; border-radius:50%; background:var(--verde-claro); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
-    .barra-incidencias { padding:12px 16px; background:rgba(0,0,0,0.4); display:flex; gap:10px; flex-shrink:0; border-top:1px solid rgba(255,255,255,0.06); }
-    .btn-incidencia { flex:1; border:none; border-radius:12px; padding:14px 8px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; transition:all 0.15s; }
-    .btn-incidencia:active { transform:scale(0.95); }
-    .btn-vertedero { background:rgba(244,162,97,0.15); color:var(--amarillo); border:1px solid rgba(244,162,97,0.3); }
-    .btn-averia    { background:rgba(107,107,107,0.15); color:#aaa; border:1px solid rgba(107,107,107,0.3); }
-    .btn-accidente { background:rgba(230,57,70,0.2); color:var(--rojo); border:1px solid rgba(230,57,70,0.4); }
 
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:none; align-items:flex-end; z-index:100; }
-    .modal-overlay.activo { display:flex; }
-    .modal { width:100%; background:#161616; border-radius:20px 20px 0 0; padding:24px 20px 40px; animation:slideUp 0.3s ease; }
-    .modal-titulo { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; margin-bottom:6px; }
-    .modal-subtitulo { font-size:13px; color:var(--gris-claro); margin-bottom:24px; line-height:1.5; }
-    .modal-acciones { display:flex; flex-direction:column; gap:10px; }
-    .btn-modal { width:100%; border:none; border-radius:12px; padding:16px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.15s; text-align:left; display:flex; align-items:center; gap:12px; }
-    .btn-modal-principal { background:var(--amarillo); color:var(--negro); }
-    .btn-modal-peligro { background:var(--rojo); color:white; }
-    .btn-modal-cancelar { background:rgba(255,255,255,0.06); color:var(--gris-claro); border:1px solid rgba(255,255,255,0.1) !important; text-align:center; justify-content:center; }
-    .btn-modal .icono { font-size:20px; }
+    .barra-inc {
+      flex-shrink:0; padding:8px 16px;
+      padding-bottom: max(env(safe-area-inset-bottom), 8px);
+      display:flex; gap:8px;
+    }
+    .btn-inc {
+      flex:1; border:none; border-radius:12px; padding:12px 6px;
+      cursor:pointer; font-family:'IBM Plex Sans',sans-serif;
+      font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase;
+    }
+    .btn-inc:active { transform:scale(0.95); }
+    .inc-v { background:rgba(244,162,97,0.15); color:var(--amarillo); border:1px solid rgba(244,162,97,0.3); }
+    .inc-a { background:rgba(107,107,107,0.15); color:#aaa; border:1px solid rgba(107,107,107,0.3); }
+    .inc-e { background:rgba(230,57,70,0.2); color:var(--rojo); border:1px solid rgba(230,57,70,0.4); }
 
-    #pantalla-completado { height:100vh; display:none; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; text-align:center; background:var(--negro); }
-    .icono-completado { width:80px; height:80px; border-radius:50%; background:var(--verde); display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:24px; box-shadow:0 0 40px rgba(82,183,136,0.3); }
-    .titulo-completado { font-family:'Bebas Neue',sans-serif; font-size:42px; letter-spacing:5px; margin-bottom:8px; }
-    .subtitulo-completado { font-size:14px; color:var(--gris-claro); margin-bottom:32px; }
-    .resumen-completado { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:20px; margin-bottom:24px; text-align:left; }
-    .resumen-fila { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px; }
-    .resumen-fila:last-child { border-bottom:none; }
-    .resumen-label { color:var(--gris-claro); }
-    .resumen-valor { font-weight:600; color:var(--verde-claro); }
-    .btn-volver { width:100%; background:var(--verde); color:var(--blanco); border:none; border-radius:12px; padding:16px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; letter-spacing:1px; text-transform:uppercase; cursor:pointer; }
+    /* ══ COMPLETADO ══ */
+    #p-completado {
+      align-items:center; justify-content:center; text-align:center; padding:40px 20px;
+    }
+    .ico-ok { width:76px; height:76px; border-radius:50%; background:var(--verde); display:flex; align-items:center; justify-content:center; font-size:34px; margin:0 auto 20px; box-shadow:0 0 40px rgba(82,183,136,0.3); }
+    .tit-ok { font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:5px; margin-bottom:6px; }
+    .sub-ok { font-size:13px; color:var(--gris-claro); margin-bottom:28px; }
+    .resumen { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; margin-bottom:20px; text-align:left; }
+    .res-fila { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px; }
+    .res-fila:last-child { border-bottom:none; }
+    .res-lab { color:var(--gris-claro); }
+    .res-val { font-weight:600; color:var(--verde-claro); }
+    .btn-volver { width:100%; background:var(--verde); color:var(--blanco); border:none; border-radius:12px; padding:16px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; }
 
-    .indicador-voz { display:inline-flex; align-items:center; gap:6px; background:rgba(82,183,136,0.15); border:1px solid rgba(82,183,136,0.3); border-radius:20px; padding:4px 10px; font-size:11px; color:var(--verde-claro); letter-spacing:1px; margin-top:4px; }
-    .punto-voz { width:6px; height:6px; border-radius:50%; background:var(--verde-claro); animation:pulso 1.5s ease-in-out infinite; }
+    /* ══ MODALES ══ */
+    .modal-bg {
+      position:fixed; inset:0; background:rgba(0,0,0,0.88);
+      display:none; align-items:flex-end; z-index:300;
+    }
+    .modal-bg.on { display:flex; }
+    .modal-box {
+      width:100%; background:#161616; border-radius:20px 20px 0 0;
+      padding:22px 20px max(env(safe-area-inset-bottom),28px);
+      animation:subir 0.28s ease;
+    }
+    .modal-tit { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:3px; margin-bottom:6px; }
+    .modal-sub { font-size:13px; color:var(--gris-claro); margin-bottom:20px; line-height:1.5; }
+    .modal-acc { display:flex; flex-direction:column; gap:9px; }
+    .mbtn { width:100%; border:none; border-radius:12px; padding:15px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:11px; }
+    .mbtn-am  { background:var(--amarillo); color:var(--negro); }
+    .mbtn-rd  { background:var(--rojo); color:white; }
+    .mbtn-gr  { background:rgba(255,255,255,0.06); color:#aaa; border:1px solid rgba(255,255,255,0.1) !important; }
+    .mbtn-can { background:rgba(255,255,255,0.05); color:var(--gris-claro); justify-content:center; }
+    .mbtn-ico { font-size:20px; }
 
-    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    @keyframes pulso   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+    /* Modal confirmación 112 */
+    #modal-confirm112 .modal-tit { color:var(--rojo); font-size:28px; }
+    .confirm-grande { font-size:48px; text-align:center; margin:16px 0; }
+
+    @keyframes pulso { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+    @keyframes subir { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @keyframes fadeI { from{opacity:0} to{opacity:1} }
   </style>
 </head>
 <body>
 
-<div id="pantalla-selector">
+<!-- ══ SELECTOR ══ -->
+<div class="pantalla" id="p-selector">
   <div class="cabecera">
     <div>
-      <div class="saludo" id="saludo-nombre">Bienvenido</div>
-      <div style="font-size:11px;color:var(--gris-claro);margin-top:2px;">Conductor · RECORRIDOS</div>
+      <div class="saludo" id="saludo">Bienvenido</div>
+      <div style="font-size:11px;color:var(--gris-claro);margin-top:2px">Conductor · RECORRIDOS</div>
     </div>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
-  <div class="titulo-selector">ELIGE TU<br>RECORRIDO</div>
-  <div class="subtitulo-selector">Selecciona la ruta asignada para hoy</div>
-  <div class="lista-recorridos" id="lista-recorridos">
-    <div style="text-align:center;color:var(--gris-claro);padding:40px 0;font-size:14px;">Cargando recorridos...</div>
+  <div class="titulo-sel">ELIGE TU<br>RECORRIDO</div>
+  <div class="sub-sel">Selecciona la ruta asignada para hoy</div>
+  <div class="lista-scroll" id="lista-rec">
+    <div style="text-align:center;color:var(--gris-claro);padding:40px 0">Cargando...</div>
   </div>
 </div>
 
-<div id="pantalla-ruta">
-  <div class="barra-ruta">
-    <div>
-      <div class="ruta-titulo" id="ruta-nombre-barra">RECORRIDO</div>
-      <div class="indicador-voz"><span class="punto-voz"></span> Voz activa</div>
+<!-- ══ RUTA EN CURSO ══ -->
+<div class="pantalla oculta" id="p-ruta">
+  <div class="barra-top">
+    <div class="barra-top-fila">
+      <div class="ruta-nom" id="ruta-nom">RECORRIDO</div>
+      <div class="progreso-txt"><span id="prog-txt">0/0</span><br><span style="font-size:10px;opacity:0.5">contenedores</span></div>
     </div>
-    <div class="ruta-progreso-texto">
-      <div id="texto-progreso">0 / 0</div>
-      <div style="font-size:11px;opacity:0.5;">contenedores</div>
-    </div>
+    <div class="voz-badge"><span class="voz-dot"></span> Voz activa</div>
   </div>
-  <div class="barra-progreso-wrap"><div class="barra-progreso-fill" id="barra-progreso" style="width:0%"></div></div>
-  <div class="zona-contenedor" id="zona-contenedor"></div>
-  <div style="padding:0 16px 8px;flex-shrink:0;">
-    <button class="btn-recoger" onclick="marcarRecogido()">✓ CONTENEDOR RECOGIDO</button>
+  <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+
+  <div class="zona-ruta" id="zona-ruta"></div>
+
+  <div class="fondo-ruta">
+    <button class="btn-recoger" id="btn-rec" onclick="marcarRecogido()">
+      ✓ &nbsp;CONTENEDOR RECOGIDO
+    </button>
   </div>
-  <div class="barra-incidencias">
-    <button class="btn-incidencia btn-vertedero" onclick="abrirModal('vertedero')">🗑 Vertedero</button>
-    <button class="btn-incidencia btn-averia"    onclick="abrirModal('averia')">🔧 Avería</button>
-    <button class="btn-incidencia btn-accidente" onclick="abrirModal('accidente')">🚨 Accidente</button>
+  <div class="barra-inc">
+    <button class="btn-inc inc-v" onclick="abrirModal('vertedero')">🗑<br>Vertedero</button>
+    <button class="btn-inc inc-a" onclick="abrirModal('averia')">🔧<br>Avería</button>
+    <button class="btn-inc inc-e" onclick="abrirModal('emergencia')">🚨<br>Emergencia</button>
   </div>
 </div>
 
-<div id="pantalla-completado">
-  <div class="icono-completado">✓</div>
-  <div class="titulo-completado">RECORRIDO<br>COMPLETADO</div>
-  <div class="subtitulo-completado">Todos los contenedores han sido recogidos</div>
-  <div class="resumen-completado" id="resumen-completado"></div>
+<!-- ══ COMPLETADO ══ -->
+<div class="pantalla oculta" id="p-completado">
+  <div class="ico-ok">✓</div>
+  <div class="tit-ok">RECORRIDO<br>COMPLETADO</div>
+  <div class="sub-ok">Todos los contenedores recogidos</div>
+  <div class="resumen" id="resumen"></div>
   <button class="btn-volver" onclick="volverSelector()">Volver al inicio</button>
 </div>
 
-<!-- MODAL VERTEDERO -->
-<div class="modal-overlay" id="modal-vertedero">
-  <div class="modal">
-    <div class="modal-titulo" style="color:var(--amarillo)">🗑 VERTEDERO</div>
-    <div class="modal-subtitulo">La ruta se pausará. Navegarás al vertedero y al volver continuarás desde donde lo dejaste.</div>
-    <div class="modal-acciones">
-      <button class="btn-modal btn-modal-principal" onclick="irVertedero()"><span class="icono">🗺</span> Navegar al vertedero</button>
-      <button class="btn-modal btn-modal-cancelar" onclick="cerrarModales()">Cancelar</button>
+<!-- ══ MODAL VERTEDERO ══ -->
+<div class="modal-bg" id="modal-vertedero">
+  <div class="modal-box">
+    <div class="modal-tit" style="color:var(--amarillo)">🗑 VERTEDERO</div>
+    <div class="modal-sub">La ruta se pausa. Navegarás al vertedero y al volver continuarás desde el mismo punto.</div>
+    <div class="modal-acc">
+      <button class="mbtn mbtn-am" onclick="irVertedero()"><span class="mbtn-ico">🗺</span>Abrir ruta al vertedero</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL AVERÍA -->
-<div class="modal-overlay" id="modal-averia">
-  <div class="modal">
-    <div class="modal-titulo" style="color:#aaa">🔧 AVERÍA</div>
-    <div class="modal-subtitulo">Se guardará tu posición y los contenedores pendientes. ¿A quién deseas llamar?</div>
-    <div class="modal-acciones" id="contactos-averia"></div>
-    <div style="margin-top:10px;"><button class="btn-modal btn-modal-cancelar" onclick="cerrarModales()">Cancelar</button></div>
+<!-- ══ MODAL AVERÍA ══ -->
+<div class="modal-bg" id="modal-averia">
+  <div class="modal-box">
+    <div class="modal-tit" style="color:#aaa">🔧 AVERÍA</div>
+    <div class="modal-sub">Tu posición y los contenedores pendientes quedan guardados. ¿A quién llamas?</div>
+    <div class="modal-acc" id="cont-averia"></div>
+    <div style="margin-top:9px"><button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button></div>
   </div>
 </div>
 
-<!-- MODAL ACCIDENTE -->
-<div class="modal-overlay" id="modal-accidente">
-  <div class="modal">
-    <div class="modal-titulo" style="color:var(--rojo)">🚨 ACCIDENTE</div>
-    <div class="modal-subtitulo">Tu ubicación GPS se enviará al administrador inmediatamente.</div>
-    <div class="modal-acciones">
-      <button class="btn-modal btn-modal-peligro" onclick="llamar112()"><span class="icono">📞</span> Llamar al 112 ahora</button>
-      <button class="btn-modal" style="background:rgba(255,255,255,0.06);color:#ccc;border:1px solid rgba(255,255,255,0.1);" onclick="llamarSuperior()"><span class="icono">📱</span> Llamar al superior</button>
-      <button class="btn-modal btn-modal-cancelar" onclick="cerrarModales()">Cancelar</button>
+<!-- ══ MODAL EMERGENCIA (menú) ══ -->
+<div class="modal-bg" id="modal-emergencia">
+  <div class="modal-box">
+    <div class="modal-tit" style="color:var(--rojo)">🚨 EMERGENCIA</div>
+    <div class="modal-sub">Selecciona el tipo de emergencia. Tu ubicación se enviará al administrador.</div>
+    <div class="modal-acc">
+      <button class="mbtn mbtn-rd" onclick="confirmar112()"><span class="mbtn-ico">📞</span>Accidente — Llamar al 112</button>
+      <button class="mbtn mbtn-gr" onclick="llamarSuperior()"><span class="mbtn-ico">📱</span>Avisar al superior</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CONFIRMACIÓN 112 ══ -->
+<div class="modal-bg" id="modal-confirm112">
+  <div class="modal-box">
+    <div class="modal-tit">⚠ CONFIRMAR LLAMADA</div>
+    <div class="modal-sub">Di <strong style="color:var(--rojo)">"SÍ LLAMA"</strong> o pulsa el botón para llamar al 112 ahora.</div>
+    <div class="confirm-grande">📞 112</div>
+    <div class="modal-acc">
+      <button class="mbtn mbtn-rd" id="btn-confirm-112" onclick="ejecutarLlamar112()"><span class="mbtn-ico">✓</span>SÍ, LLAMAR AL 112 AHORA</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -176,9 +275,10 @@
 <script type="module">
 import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, getDocs, setDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
+const FB = {
   apiKey:"AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",
   authDomain:"recorridos-app-f362a.firebaseapp.com",
   projectId:"recorridos-app-f362a",
@@ -186,245 +286,308 @@ const firebaseConfig = {
   messagingSenderId:"375824896184",
   appId:"1:375824896184:web:9d1bcbe4df81e651f9644d"
 };
-
-const app  = initializeApp(firebaseConfig);
+const app  = initializeApp(FB);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-let usuarioActual=null, recorridoActual=null, contenedores=[], indexActual=0, watchId=null;
+let usuario=null, recorrido=null, conts=[], idx=0, watchId=null;
+let esperandoConfirm112=false;
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.href='../index.html'; return; }
-  const snap = await getDoc(doc(db,'usuarios',user.uid));
-  if (!snap.exists() || snap.data().rol !== 'conductor') { window.location.href='../index.html'; return; }
-  usuarioActual = { uid:user.uid, ...snap.data() };
-  document.getElementById('saludo-nombre').textContent = `Hola, ${usuarioActual.nombre||'Conductor'}`;
+/* ── AUTH ── */
+onAuthStateChanged(auth, async user=>{
+  if (!user){ ir('../index.html'); return; }
+  const s=await getDoc(doc(db,'usuarios',user.uid));
+  if (!s.exists()||s.data().rol!=='conductor'){ ir('../index.html'); return; }
+  usuario={uid:user.uid,...s.data()};
+  document.getElementById('saludo').textContent=`Hola, ${usuario.nombre||'Conductor'}`;
   cargarRecorridos();
 });
 
-async function cargarRecorridos() {
-  const lista = document.getElementById('lista-recorridos');
-  try {
-    const snap = await getDocs(collection(db,'recorridos'));
-    if (snap.empty) {
-      lista.innerHTML=`<div style="text-align:center;color:var(--gris-claro);padding:40px 0;font-size:14px;">No hay recorridos configurados aún.<br><span style="font-size:12px;opacity:0.6;">El administrador debe crearlos.</span></div>`;
-      return;
-    }
+function ir(url){ window.location.href=url; }
+
+/* ── RECORRIDOS ── */
+async function cargarRecorridos(){
+  const lista=document.getElementById('lista-rec');
+  try{
+    const snap=await getDocs(collection(db,'recorridos'));
+    if(snap.empty){ lista.innerHTML=msg('No hay recorridos configurados aún'); return; }
     lista.innerHTML='';
-    snap.forEach(d => {
-      const r=d.data();
-      const div=document.createElement('div');
-      div.className='tarjeta-recorrido';
-      div.innerHTML=`<div class="recorrido-info"><div class="recorrido-numero">R${r.numero||d.id}</div><div class="recorrido-nombre">${r.nombre||'Recorrido'}</div><div class="recorrido-meta">${(r.contenedores||[]).length} contenedores · ${r.zona||''}</div></div><div class="recorrido-flecha">›</div>`;
-      div.onclick=()=>iniciarRecorrido(d.id,r);
-      lista.appendChild(div);
+    const docs=[];
+    snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(a.numero||0)-(b.numero||0));
+    docs.forEach(r=>{
+      const d=document.createElement('div');
+      d.className='tarjeta-rec';
+      d.innerHTML=`<div><div class="rec-num">R${r.numero||r.id}</div><div class="rec-nombre">${r.nombre||'Recorrido'}</div><div class="rec-meta">${(r.contenedores||[]).length} contenedores · ${r.zona||''}</div></div><div style="font-size:20px;color:var(--gris-claro)">›</div>`;
+      d.onclick=()=>iniciar(r.id,r);
+      lista.appendChild(d);
     });
-  } catch(e) {
-    lista.innerHTML=`<div style="text-align:center;color:#e63946;padding:40px 0;">Error al cargar recorridos</div>`;
-  }
+  }catch(e){ lista.innerHTML=msg('Error al cargar','#e63946'); }
 }
 
-window.iniciarRecorrido = function(id, datos) {
-  recorridoActual={id,...datos};
-  contenedores=datos.contenedores||[];
-  indexActual=0;
-  document.getElementById('ruta-nombre-barra').textContent=`RECORRIDO ${datos.numero||id}`;
-  document.getElementById('pantalla-selector').style.display='none';
-  const pr=document.getElementById('pantalla-ruta');
-  pr.style.display='flex'; pr.style.flexDirection='column';
-  iniciarGeolocalizacion();
-  abrirGoogleMaps();
-  renderContenedorActual();
-  hablar(`Iniciando ${datos.nombre||'recorrido'}. Primer contenedor: ${contenedores[0]?.numero||''}, ${contenedores[0]?.calle||''}`);
+function msg(t,c='var(--gris-claro)'){
+  return `<div style="text-align:center;color:${c};padding:40px 0;font-size:14px;">${t}</div>`;
+}
+
+/* ── INICIAR RECORRIDO ── */
+window.iniciar = function(id,datos){
+  recorrido={id,...datos};
+  conts=datos.contenedores||[];
+  idx=0;
+  document.getElementById('ruta-nom').textContent=`RECORRIDO ${datos.numero||id}`;
+  mostrarPantalla('p-ruta');
+  iniciarGPS();
+  abrirNavegacionGoogleMaps();
+  renderActual();
+  hablar(`Iniciando ${datos.nombre||'recorrido'}. Primer punto: ${conts[0]?.calle||''}`);
 };
 
-function abrirGoogleMaps() {
-  if (!contenedores.length) return;
-  const destino=contenedores[contenedores.length-1];
-  const paradas=contenedores.slice(0,-1);
-  let url='https://www.google.com/maps/dir/?api=1';
-  if (paradas[0]?.coords) url+=`&origin=${paradas[0].coords.lat},${paradas[0].coords.lng}`;
-  if (destino?.coords)    url+=`&destination=${destino.coords.lat},${destino.coords.lng}`;
-  const wp=paradas.slice(1).filter(p=>p.coords).map(p=>`${p.coords.lat},${p.coords.lng}`).join('|');
-  if (wp) url+=`&waypoints=${encodeURIComponent(wp)}`;
-  url+='&travelmode=driving';
-  window.open(url,'_blank');
+/* ── GOOGLE MAPS — navegación directa turn-by-turn ── */
+function abrirNavegacionGoogleMaps(){
+  if(!conts.length) return;
+
+  // Construir URL de navegación con waypoints
+  // Google Maps acepta: /maps/dir/origen/waypoint1/waypoint2/.../destino
+  // Si las paradas tienen coordenadas las usamos; si no, usamos el texto de la calle.
+  // Usamos la posición actual como origen automáticamente con "current+location"
+
+  const paradas = conts.map(c=>{
+    if(c.coords?.lat && c.coords?.lng){
+      return `${c.coords.lat},${c.coords.lng}`;
+    }
+    // Usar el texto de la dirección (funciona bien con nombres de calles)
+    return encodeURIComponent(c.calle||'');
+  }).filter(Boolean);
+
+  if(!paradas.length) return;
+
+  // URL de Google Maps con ruta multi-parada
+  // "dir" con barras genera ruta turn-by-turn directamente
+  const base = 'https://www.google.com/maps/dir/';
+  const origen = 'Ubicación+actual';
+  const ruta = [origen, ...paradas].join('/');
+  const url = base + ruta;
+
+  // En móvil, abrir en la misma pestaña evita el about:blank
+  // Si está disponible la app de Google Maps nativa, la abrirá
+  window.location.href = url;
 }
 
-function renderContenedorActual() {
-  const total=contenedores.length;
-  const recogidos=contenedores.filter(c=>c.recogido).length;
-  document.getElementById('texto-progreso').textContent=`${recogidos} / ${total}`;
-  document.getElementById('barra-progreso').style.width=(total?(recogidos/total*100):0)+'%';
-  if (indexActual>=total) { mostrarCompletado(); return; }
-  const actual=contenedores[indexActual];
-  const proximos=contenedores.slice(indexActual+1,indexActual+4);
-  document.getElementById('zona-contenedor').innerHTML=`
-    <div class="contenedor-actual">
-      <div class="etiqueta-actual">Contenedor actual</div>
-      <div class="numero-contenedor">${actual.numero||(indexActual+1)}</div>
-      <div class="calle-contenedor">${actual.calle||'Sin dirección'}</div>
-      ${actual.nota?`<div class="instruccion-contenedor">⚠ ${actual.nota}</div>`:''}
+/* ── RENDER CONTENEDOR ACTUAL ── */
+function renderActual(){
+  const total=conts.length;
+  const rec=conts.filter(c=>c.recogido).length;
+  document.getElementById('prog-txt').textContent=`${rec}/${total}`;
+  document.getElementById('prog-fill').style.width=(total?(rec/total*100):0)+'%';
+
+  if(idx>=total){ mostrarCompletado(); return; }
+
+  const a=conts[idx];
+  const proximos=conts.slice(idx+1,idx+4);
+  const yaRecogidos=conts.filter(c=>c.recogido).slice(-3).reverse();
+
+  document.getElementById('zona-ruta').innerHTML=`
+    <div class="caja-actual">
+      <div class="etiq-actual">Contenedor actual</div>
+      <div class="num-cont">${a.numero||(idx+1)}</div>
+      <div class="calle-cont">${a.calle||'Sin dirección'}</div>
+      ${a.nota?`<div class="nota-cont">⚠ ${a.nota}</div>`:''}
     </div>
-    ${proximos.length?`<div class="proximos-titulo">Próximos</div><div class="lista-proximos">${proximos.map((p,i)=>`<div class="item-proximo"><div class="proximo-num">${p.numero||(indexActual+2+i)}</div><div class="proximo-info"><div class="proximo-calle">${p.calle||'Sin dirección'}</div>${p.nota?`<div class="proximo-nota">${p.nota}</div>`:''}</div></div>`).join('')}</div>`:''}
-    ${recogidos>0?`<div class="proximos-titulo">Recogidos</div><div class="lista-proximos">${contenedores.filter(c=>c.recogido).slice(-3).reverse().map(p=>`<div class="item-proximo recogido"><div class="proximo-num">${p.numero||''}</div><div class="proximo-info"><div class="proximo-calle">${p.calle||''}</div></div><div class="check-recogido">✓</div></div>`).join('')}</div>`:''}`;
+    ${proximos.length?`
+      <div class="prox-titulo">Próximos</div>
+      <div class="prox-lista">
+        ${proximos.map((p,i)=>`
+          <div class="prox-item">
+            <div class="prox-n">${p.numero||(idx+2+i)}</div>
+            <div class="prox-info">
+              <div class="prox-calle">${p.calle||''}</div>
+              ${p.nota?`<div class="prox-nota">${p.nota}</div>`:''}
+            </div>
+          </div>`).join('')}
+      </div>`:''}
+    ${yaRecogidos.length?`
+      <div class="prox-titulo">Recogidos</div>
+      <div class="prox-lista">
+        ${yaRecogidos.map(p=>`
+          <div class="prox-item ok">
+            <div class="prox-n">${p.numero||''}</div>
+            <div class="prox-info"><div class="prox-calle">${p.calle||''}</div></div>
+            <div class="check-ok">✓</div>
+          </div>`).join('')}
+      </div>`:''}
+  `;
 }
 
-window.marcarRecogido = async function() {
-  if (indexActual>=contenedores.length) return;
-  contenedores[indexActual].recogido=true;
-  contenedores[indexActual].horaRecogida=new Date().toISOString();
-  try {
-    await setDoc(doc(db,'recorridos',recorridoActual.id,'progreso',usuarioActual.uid),{
-      indexActual:indexActual+1, contenedores,
-      ultimaActualizacion:serverTimestamp(),
-      conductorId:usuarioActual.uid, conductorNombre:usuarioActual.nombre
+/* ── MARCAR RECOGIDO ── */
+window.marcarRecogido = async function(){
+  if(idx>=conts.length) return;
+  conts[idx].recogido=true;
+  conts[idx].hora=new Date().toISOString();
+  try{
+    await setDoc(doc(db,'recorridos',recorrido.id,'progreso',usuario.uid),{
+      indexActual:idx+1, conts,
+      ts:serverTimestamp(), conductorId:usuario.uid, conductorNombre:usuario.nombre
     });
-  } catch(e) {}
-  indexActual++;
-  const sig=contenedores[indexActual];
-  hablar(sig?`Recogido. Siguiente: ${sig.numero||''}, ${sig.calle||''}`:'Último contenedor recogido. Recorrido completado.');
-  renderContenedorActual();
+  }catch(e){}
+  idx++;
+  const sig=conts[idx];
+  hablar(sig?`Recogido. Siguiente: ${sig.calle||''}`:'Último contenedor. Recorrido completado.');
+  renderActual();
 };
 
-function mostrarCompletado() {
-  document.getElementById('pantalla-ruta').style.display='none';
-  const pc=document.getElementById('pantalla-completado');
-  pc.style.display='flex';
-  const total=contenedores.length, recogidos=contenedores.filter(c=>c.recogido).length;
-  document.getElementById('resumen-completado').innerHTML=`
-    <div class="resumen-fila"><span class="resumen-label">Recorrido</span><span class="resumen-valor">${recorridoActual.nombre||''}</span></div>
-    <div class="resumen-fila"><span class="resumen-label">Contenedores recogidos</span><span class="resumen-valor">${recogidos} / ${total}</span></div>
-    <div class="resumen-fila"><span class="resumen-label">Conductor</span><span class="resumen-valor">${usuarioActual.nombre||''}</span></div>
-    <div class="resumen-fila"><span class="resumen-label">Hora de finalización</span><span class="resumen-valor">${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span></div>`;
-  if (watchId) navigator.geolocation.clearWatch(watchId);
+/* ── COMPLETADO ── */
+function mostrarCompletado(){
+  mostrarPantalla('p-completado');
+  const total=conts.length, rec=conts.filter(c=>c.recogido).length;
+  document.getElementById('resumen').innerHTML=`
+    <div class="res-fila"><span class="res-lab">Recorrido</span><span class="res-val">${recorrido.nombre||''}</span></div>
+    <div class="res-fila"><span class="res-lab">Recogidos</span><span class="res-val">${rec} / ${total}</span></div>
+    <div class="res-fila"><span class="res-lab">Conductor</span><span class="res-val">${usuario.nombre||''}</span></div>
+    <div class="res-fila"><span class="res-lab">Finalización</span><span class="res-val">${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span></div>`;
+  if(watchId) navigator.geolocation.clearWatch(watchId);
   hablar('Recorrido completado. Buen trabajo.');
 }
 
-window.volverSelector = function() {
-  document.getElementById('pantalla-completado').style.display='none';
-  document.getElementById('pantalla-selector').style.display='flex';
-  recorridoActual=null; contenedores=[]; indexActual=0;
+window.volverSelector = function(){
+  mostrarPantalla('p-selector');
+  recorrido=null; conts=[]; idx=0;
   cargarRecorridos();
 };
 
-function iniciarGeolocalizacion() {
-  if (!navigator.geolocation) return;
-  watchId=navigator.geolocation.watchPosition(async (pos) => {
-    if (!usuarioActual||!recorridoActual) return;
-    try {
-      await setDoc(doc(db,'localizacion',usuarioActual.uid),{
+/* ── GPS ── */
+function iniciarGPS(){
+  if(!navigator.geolocation) return;
+  watchId=navigator.geolocation.watchPosition(async pos=>{
+    if(!usuario||!recorrido) return;
+    try{
+      await setDoc(doc(db,'localizacion',usuario.uid),{
         lat:pos.coords.latitude, lng:pos.coords.longitude,
-        recorridoId:recorridoActual.id, indexContenedor:indexActual,
-        timestamp:serverTimestamp(), conductorNombre:usuarioActual.nombre
+        recorridoId:recorrido.id, indexContenedor:idx,
+        timestamp:serverTimestamp(), conductorNombre:usuario.nombre
       });
-    } catch(e) {}
+    }catch(e){}
   },null,{enableHighAccuracy:true,maximumAge:10000});
 }
 
-window.abrirModal = function(tipo) {
+/* ── MODALES ── */
+window.abrirModal = function(tipo){
   cerrarModales();
-  document.getElementById(`modal-${tipo}`).classList.add('activo');
-  if (tipo==='averia') cargarContactosAveria();
+  if(tipo==='averia') cargarContactosAveria();
+  document.getElementById(`modal-${tipo}`).classList.add('on');
+};
+window.cerrarModales = function(){
+  document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('on'));
+  esperandoConfirm112=false;
 };
 
-window.cerrarModales = function() {
-  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('activo'));
-};
-
-function cargarContactosAveria() {
-  const contactos=recorridoActual?.contactosAveria||[{nombre:'Supervisor de turno',telefono:''}];
-  document.getElementById('contactos-averia').innerHTML=contactos.map(c=>`
-    <button class="btn-modal" style="background:rgba(107,107,107,0.15);color:#ccc;border:1px solid rgba(107,107,107,0.3);" onclick="llamarContacto('${c.telefono}','${c.nombre}')">
-      <span class="icono">📞</span> ${c.nombre}
+function cargarContactosAveria(){
+  const contactos=recorrido?.contactosAveria||[{nombre:'Supervisor de turno',telefono:''}];
+  document.getElementById('cont-averia').innerHTML=contactos.map(c=>`
+    <button class="mbtn mbtn-gr" onclick="llamarContacto('${c.telefono}','${c.nombre}')">
+      <span class="mbtn-ico">📞</span>${c.nombre}
     </button>`).join('');
 }
 
-window.irVertedero = function() {
+window.irVertedero = function(){
   cerrarModales();
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      await setDoc(doc(db,'localizacion',usuarioActual.uid),{
-        lat:pos.coords.latitude, lng:pos.coords.longitude,
-        estado:'vertedero', recorridoId:recorridoActual.id,
-        indexContenedor:indexActual, timestamp:serverTimestamp(),
-        conductorNombre:usuarioActual.nombre
-      });
-    } catch(e) {}
-  });
-  const cv=recorridoActual?.coordsVertedero;
-  let url='https://www.google.com/maps/dir/?api=1&travelmode=driving';
-  url+=cv?`&destination=${cv.lat},${cv.lng}`:'&destination=vertedero+municipal';
-  window.open(url,'_blank');
-  hablar('Navegando al vertedero. Al volver, pulsa el contenedor para continuar.');
+  guardarEstado('vertedero');
+  const cv=recorrido?.coordsVertedero;
+  let dest=cv?`${cv.lat},${cv.lng}`:'vertedero+municipal';
+  // Abrir navegación al vertedero en misma pestaña
+  window.location.href=`https://www.google.com/maps/dir/Ubicación+actual/${dest}`;
+  hablar('Navegando al vertedero.');
 };
 
-window.llamarContacto = function(tel, nombre) {
+window.llamarContacto = function(tel,nombre){
   cerrarModales();
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      await setDoc(doc(db,'localizacion',usuarioActual.uid),{
-        lat:pos.coords.latitude, lng:pos.coords.longitude,
-        estado:'averia', recorridoId:recorridoActual.id,
-        indexContenedor:indexActual, timestamp:serverTimestamp(),
-        conductorNombre:usuarioActual.nombre
-      });
-    } catch(e) {}
-  });
+  guardarEstado('averia');
   hablar(`Llamando a ${nombre}`);
-  if (tel) window.location.href=`tel:${tel}`;
+  if(tel) window.location.href=`tel:${tel}`;
 };
 
-window.llamar112 = function() {
+/* ── EMERGENCIA 112 con confirmación ── */
+window.confirmar112 = function(){
   cerrarModales();
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      await setDoc(doc(db,'localizacion',usuarioActual.uid),{
-        lat:pos.coords.latitude, lng:pos.coords.longitude,
-        estado:'accidente', recorridoId:recorridoActual.id,
-        indexContenedor:indexActual, timestamp:serverTimestamp(),
-        conductorNombre:usuarioActual.nombre, urgente:true
-      });
-    } catch(e) {}
-  });
+  esperandoConfirm112=true;
+  document.getElementById('modal-confirm112').classList.add('on');
+  hablar('¿Llamar al 112? Di: SÍ LLAMA, o pulsa el botón.');
+};
+
+window.ejecutarLlamar112 = function(){
+  cerrarModales();
+  guardarEstado('accidente');
   hablar('Llamando al 112.');
-  window.location.href='tel:112';
+  setTimeout(()=>{ window.location.href='tel:112'; }, 600);
 };
 
-window.llamarSuperior = function() {
-  const tel=recorridoActual?.telefonoSuperior||'';
-  if (tel) window.location.href=`tel:${tel}`;
-  else alert('No hay número de superior configurado.');
+window.llamarSuperior = function(){
+  cerrarModales();
+  guardarEstado('averia');
+  const tel=recorrido?.telefonoSuperior||'';
+  if(tel){ hablar('Llamando al superior.'); window.location.href=`tel:${tel}`; }
+  else alert('No hay número de superior configurado en este recorrido.');
 };
 
-function hablar(texto) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(texto);
-  u.lang='es-ES'; u.rate=0.95;
-  window.speechSynthesis.speak(u);
+async function guardarEstado(estado){
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      await setDoc(doc(db,'localizacion',usuario.uid),{
+        lat:pos.coords.latitude, lng:pos.coords.longitude,
+        estado, recorridoId:recorrido.id, indexContenedor:idx,
+        timestamp:serverTimestamp(), conductorNombre:usuario.nombre,
+        urgente:estado==='accidente'
+      });
+    }catch(e){}
+  });
 }
 
+/* ── VOZ ── */
+const sinte=window.speechSynthesis;
+function hablar(txt){
+  if(!sinte) return;
+  sinte.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='es-ES'; u.rate=0.9; u.pitch=1;
+  sinte.speak(u);
+}
+
+// Reconocimiento de voz con palabras clave simples
 const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
-if (Rec) {
+if(Rec){
   const rec=new Rec();
   rec.lang='es-ES'; rec.continuous=true; rec.interimResults=false;
-  rec.onresult=(e)=>{
+  rec.onresult=e=>{
     const t=e.results[e.results.length-1][0].transcript.toLowerCase().trim();
-    if (t.includes('vertedero'))                         abrirModal('vertedero');
-    if (t.includes('avería')||t.includes('averia'))      abrirModal('averia');
-    if (t.includes('accidente'))                         abrirModal('accidente');
-    if (t.includes('recogido')||t.includes('siguiente')) marcarRecogido();
+    console.log('Voz:', t);
+
+    // Confirmación 112
+    if(esperandoConfirm112 && (t.includes('sí')||t.includes('si')||t.includes('llama')||t.includes('llamar'))){
+      ejecutarLlamar112(); return;
+    }
+
+    // Comandos principales — palabras cortas y únicas
+    if(t.includes('recogido')||t.includes('siguiente')||t.includes('listo'))  marcarRecogido();
+    if(t.includes('vertedero'))        abrirModal('vertedero');
+    if(t.includes('avería')||t.includes('averia')||t.includes('averia')) abrirModal('averia');
+    if(t.includes('emergencia')||t.includes('accidente')||t.includes('socorro')) abrirModal('emergencia');
   };
   rec.onerror=()=>{};
   rec.onend=()=>{ try{rec.start();}catch(e){} };
-  try { rec.start(); } catch(e) {}
+  try{ rec.start(); }catch(e){}
 }
 
-window.cerrarSesion = async function() {
-  if (watchId) navigator.geolocation.clearWatch(watchId);
+/* ── PANTALLAS ── */
+function mostrarPantalla(id){
+  document.querySelectorAll('.pantalla').forEach(p=>{
+    p.classList.toggle('oculta', p.id!==id);
+  });
+}
+
+/* ── CERRAR SESIÓN ── */
+window.cerrarSesion = async function(){
+  if(watchId) navigator.geolocation.clearWatch(watchId);
   await signOut(auth);
-  window.location.href='../index.html';
+  ir('../index.html');
 };
 </script>
 </body>
