@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECORRIDOS — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root{
+      --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;
+      --blanco:#f0ede8;--gris:#888;--borde:rgba(255,255,255,0.09);
+      --purpura:#7c3aed;--purpura-c:#a78bfa;
+      --verde:#52b788;--amarillo:#f4a261;--rojo:#e63946;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--blanco);font-family:'IBM Plex Sans',sans-serif;}
+
+    /* ── TOPBAR ── */
+    .topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--borde);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;}
+    .spacer{flex:1;}
+    .badge{background:rgba(124,58,237,0.25);border:1px solid rgba(124,58,237,0.4);color:var(--purpura-c);border-radius:20px;padding:3px 10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+    .topbar-nom{font-size:13px;color:var(--gris);}
+    .btn-xs{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+
+    /* ── TABS ── */
+    .tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--borde);}
+    .tab{flex:1;padding:10px;text-align:center;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;cursor:pointer;color:var(--gris);border-bottom:2px solid transparent;transition:all .2s;}
+    .tab.on{color:var(--purpura-c);border-bottom-color:var(--purpura-c);}
+
+    /* ── LAYOUT PRINCIPAL ── */
+    .main{display:flex;height:calc(100vh - 90px);}
+
+    /* ── SIDEBAR ── */
+    .sidebar{width:320px;flex-shrink:0;border-right:1px solid var(--borde);display:flex;flex-direction:column;overflow:hidden;}
+    .sidebar-head{padding:14px 16px;border-bottom:1px solid var(--borde);display:flex;align-items:center;justify-content:space-between;}
+    .sidebar-tit{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;}
+    .btn-nuevo{background:var(--purpura);color:white;border:none;border-radius:7px;padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;letter-spacing:1px;}
+    .sidebar-lista{flex:1;overflow-y:auto;}
+    .rec-item{padding:12px 16px;border-bottom:1px solid var(--borde);cursor:pointer;transition:background .15s;}
+    .rec-item:hover{background:rgba(255,255,255,0.03);}
+    .rec-item.activo{background:rgba(124,58,237,0.08);border-left:3px solid var(--purpura-c);}
+    .ri-num{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--purpura-c);}
+    .ri-nom{font-size:13px;font-weight:500;}
+    .ri-meta{font-size:11px;color:var(--gris);margin-top:2px;}
+    .ri-btns{display:flex;gap:5px;margin-top:7px;}
+    .ri-btn{border-radius:5px;padding:4px 9px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid;font-family:'IBM Plex Sans',sans-serif;}
+    .ri-ed{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.35);color:var(--purpura-c);}
+    .ri-del{background:rgba(230,57,70,0.1);border-color:rgba(230,57,70,0.3);color:var(--rojo);}
+
+    /* ── CONTENIDO PRINCIPAL (mapa + editor) ── */
+    .contenido{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+    /* ── MAPA EDITOR ── */
+    #mapa-ed{flex:1;background:#1a2020;}
+    .mapa-hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);color:var(--blanco);border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap;z-index:500;pointer-events:none;border:1px solid rgba(255,255,255,0.1);}
+    .mapa-hint.oculto{display:none;}
+
+    /* ── PANEL INFERIOR EDITOR ── */
+    .panel-ed{flex-shrink:0;background:var(--bg2);border-top:1px solid var(--borde);max-height:260px;overflow-y:auto;}
+    .panel-ed-head{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--borde);position:sticky;top:0;background:var(--bg2);z-index:2;}
+    .pan-tit{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;color:var(--purpura-c);}
+    .pan-btns{display:flex;gap:7px;}
+    .btn-guardar-rec{background:var(--purpura);color:white;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-canc-rec{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:7px 12px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+
+    .ed-campos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 16px;}
+    .campo-ed label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin-bottom:4px;font-weight:500;}
+    .campo-ed input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .campo-ed input:focus{border-color:var(--purpura-c);}
+
+    /* ── POPUP FLOTANTE EN EL MAPA ── */
+    .popup-mapa{
+      position:absolute;z-index:1000;
+      background:var(--bg2);border:1px solid var(--purpura-c);
+      border-radius:12px;padding:14px;width:220px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6);
+      display:none;
+    }
+    .popup-mapa.on{display:block;}
+    .popup-tit{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--purpura-c);font-weight:600;margin-bottom:10px;}
+    .popup-mapa input{width:100%;background:rgba(255,255,255,0.07);border:1px solid var(--borde);border-radius:7px;padding:7px 9px;font-size:13px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;margin-bottom:6px;}
+    .popup-mapa input:focus{border-color:var(--purpura-c);}
+    .popup-btns{display:flex;gap:6px;margin-top:4px;}
+    .popup-ok{flex:1;background:var(--purpura);color:white;border:none;border-radius:7px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .popup-skip{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer;}
+    .popup-coord{font-size:10px;color:var(--purpura-c);margin-bottom:8px;opacity:0.8;}
+
+    /* ── LISTA PUNTOS COMPACTA ── */
+    .puntos-lista-compact{display:flex;flex-direction:column;gap:0;}
+    .pt-row{display:flex;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid var(--borde);transition:background .15s;}
+    .pt-row:hover{background:rgba(255,255,255,0.02);}
+    .pt-n{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--purpura-c);min-width:24px;}
+    .pt-num{width:64px;background:rgba(255,255,255,0.05);border:1px solid var(--borde);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-calle{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--borde);border-radius:5px;padding:4px 7px;font-size:12px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-nota{width:140px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:4px 6px;font-size:11px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-coords{font-size:10px;color:var(--purpura-c);min-width:80px;text-align:right;}
+    .pt-del{background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.6;}
+    .pt-del:hover{opacity:1;}
+
+    /* ── TABS CONTENIDO (mapa vivo / incidencias) ── */
+    .tab-cont{flex:1;display:none;flex-direction:column;}
+    .tab-cont.on{display:flex;}
+    #mapa-live-wrap{flex:1;}
+    #mapa-live{height:100%;}
+
+    /* ── INCIDENCIAS ── */
+    .inc-lista{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
+    .inc-card{background:var(--bg3);border:1px solid var(--borde);border-radius:10px;padding:12px 14px;}
+    .inc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+    .inc-tipo{font-size:13px;font-weight:600;color:var(--amarillo);}
+    .inc-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;border-radius:8px;padding:2px 7px;font-weight:600;}
+    .tag-pend{background:rgba(244,162,97,0.15);color:var(--amarillo);}
+    .tag-res{background:rgba(82,183,136,0.15);color:var(--verde);}
+    .inc-det{font-size:12px;color:var(--gris);line-height:1.6;}
+    .inc-foto{width:100%;border-radius:7px;margin-top:8px;max-height:140px;object-fit:cover;}
+    .btn-res{background:var(--verde);color:#0a0a0a;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;margin-top:8px;font-family:'IBM Plex Sans',sans-serif;}
+
+    /* ── EMPTY STATE ── */
+    .empty{text-align:center;color:var(--gris);padding:40px 20px;font-size:13px;}
+
+    /* Leaflet oscuro */
+    .leaflet-tile{filter:brightness(0.85) saturate(0.7);}
+    .leaflet-container{background:#1a2020;}
+
+    /* ══ RESPONSIVE ══ */
+    /* Pantallas medianas (< 1100px): sidebar más estrecha */
+    @media (max-width: 1100px) {
+      .sidebar { width: 240px; }
+      .ed-campos { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Pantallas pequeñas / pantalla dividida (< 850px) */
+    @media (max-width: 850px) {
+      .sidebar { width: 200px; }
+      .ed-campos { grid-template-columns: 1fr; }
+      .popup-mapa { width: 180px; padding: 10px; }
+      .popup-mapa input { font-size: 12px; padding: 6px 8px; }
+      .topbar-titulo { font-size: 18px; letter-spacing: 2px; }
+      .topbar-nom { display: none; }
+    }
+
+    /* Móvil (< 680px): sidebar se oculta detrás de un botón hamburguesa */
+    @media (max-width: 680px) {
+      .sidebar {
+        position: fixed; top: 90px; left: 0; bottom: 0;
+        width: 280px; max-width: 85vw; z-index: 1500;
+        transform: translateX(-100%); transition: transform 0.3s;
+        background: #0c0c0c;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        display: flex !important; flex-direction: column;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+      }
+      .sidebar.abierta { transform: translateX(0); }
+      .btn-hamb { display: flex !important; }
+      .contenido { width: 100%; }
+      #mapa-ed { height: 260px; }
+      .panel-ed { max-height: 340px; }
+      .ed-campos { grid-template-columns: 1fr; padding: 10px 12px; gap: 6px; }
+      .campo-ed input { font-size: 13px; padding: 9px 11px; }
+      .popup-mapa { width: 90vw; max-width: 260px; }
+      .pt-row { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+      .pt-num { width: 60px; }
+      .pt-nota { width: 100%; }
+      .pt-coords { font-size: 9px; }
+      .sidebar-lista { flex:1; overflow-y:auto; }
+
+      /* Cuando sidebar abierta, ocultar controles de Leaflet y hint */
+      body.sidebar-open .leaflet-top,
+      body.sidebar-open .leaflet-bottom,
+      body.sidebar-open .mapa-hint {
+        display: none !important;
+      }
+    }
+
+    /* Botón hamburguesa - oculto por defecto, visible en móvil */
+    .btn-hamb {
+      display: none;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      color: var(--blanco); border-radius: 8px; padding: 6px 11px;
+      font-size: 18px; cursor: pointer; align-items: center; justify-content: center;
+      margin-right: 8px;
+    }
+
+    /* Overlay para cerrar sidebar en móvil */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 1400;
+    }
+    .sidebar-overlay.on { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="btn-hamb" onclick="toggleSidebar()">☰</button>
+  <div class="logo">RECORRIDOS</div>
+  <span class="badge">Admin</span>
+  <span class="topbar-nom" id="admin-nom"></span>
+  <div class="spacer"></div>
+  <button class="btn-xs" onclick="cerrarSesion()">Salir</button>
+</div>
+
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="tabs">
+  <div class="tab on"  onclick="cambiarTab('recorridos')">🗺 Recorridos</div>
+  <div class="tab"     onclick="cambiarTab('mapa')">📍 En vivo</div>
+  <div class="tab"     onclick="cambiarTab('incidencias')" id="tab-inc-btn">⚠ Incidencias</div>
+</div>
+
+<div class="main">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-tit">RECORRIDOS</div>
+      <button class="btn-nuevo" onclick="nuevoRecorrido()">+ Nuevo</button>
+    </div>
+    <div class="sidebar-lista" id="sidebar-lista">
+      <div class="empty">Cargando...</div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: RECORRIDOS ── -->
+  <div class="contenido tab-cont on" id="tab-recorridos">
+    <div id="mapa-ed"></div>
+    <div class="mapa-hint" id="mapa-hint">Haz clic en el mapa para añadir un punto de recorrido</div>
+
+    <!-- Popup flotante al clicar en el mapa -->
+    <div class="popup-mapa" id="popup-mapa">
+      <div class="popup-tit">Nuevo punto</div>
+      <div class="popup-coord" id="popup-coord"></div>
+      <input type="text" id="pop-num"   placeholder="Nº contenedor (ej: C-01)">
+      <input type="text" id="pop-calle" placeholder="Calle, número">
+      <input type="text" id="pop-nota"  placeholder="Nota (marcha atrás, etc.)">
+      <div class="popup-btns">
+        <button class="popup-ok"   onclick="confirmarPunto()">Añadir</button>
+        <button class="popup-skip" onclick="cerrarPopup()">✕</button>
+      </div>
+    </div>
+
+    <!-- Panel inferior con campos generales + lista compacta -->
+    <div class="panel-ed" id="panel-ed">
+      <div class="panel-ed-head">
+        <div class="pan-tit" id="pan-tit">NUEVO RECORRIDO</div>
+        <div class="pan-btns">
+          <button class="btn-guardar-rec" onclick="guardarRecorrido()">💾 Guardar</button>
+          <button class="btn-canc-rec"    onclick="cancelarEdicion()">Cancelar</button>
+        </div>
+      </div>
+      <div class="ed-campos">
+        <div class="campo-ed"><label>Número</label><input type="number" id="ed-num" placeholder="1" min="1" max="11"></div>
+        <div class="campo-ed"><label>Nombre del recorrido</label><input type="text" id="ed-nombre" placeholder="Zona Norte"></div>
+        <div class="campo-ed"><label>Zona / descripción</label><input type="text" id="ed-zona" placeholder="Barrio San Miguel"></div>
+        <div class="campo-ed"><label>Teléfono superior</label><input type="tel" id="ed-tel" placeholder="956000000"></div>
+        <div class="campo-ed"><label>Vertedero (lat,lng)</label><input type="text" id="ed-vert" placeholder="36.12,-5.43"></div>
+        <div class="campo-ed" style="display:flex;align-items:flex-end;"><button class="btn-nuevo" onclick="addPuntoManual()" style="width:100%">+ Punto manual</button></div>
+      </div>
+      <!-- Lista compacta de puntos -->
+      <div class="puntos-lista-compact" id="puntos-lista"></div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: MAPA EN VIVO ── -->
+  <div class="contenido tab-cont" id="tab-mapa">
+    <div id="mapa-live-wrap"><div id="mapa-live"></div></div>
+    <div style="padding:8px 14px;background:var(--bg2);border-top:1px solid var(--borde);display:flex;gap:14px;">
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--verde);border-radius:50%;display:inline-block"></span>En ruta</span>
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--amarillo);border-radius:50%;display:inline-block"></span>Vertedero</span>
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--rojo);border-radius:50%;display:inline-block"></span>Emergencia</span>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: INCIDENCIAS ── -->
+  <div class="contenido tab-cont" id="tab-incidencias">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--borde);display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px">INCIDENCIAS</span>
+      <span style="font-size:12px;color:var(--gris)" id="cnt-inc">—</span>
+    </div>
+    <div class="inc-lista" id="inc-lista"><div class="empty">Cargando...</div></div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",authDomain:"recorridos-app-f362a.firebaseapp.com",projectId:"recorridos-app-f362a",storageBucket:"recorridos-app-f362a.firebasestorage.app",messagingSenderId:"375824896184",appId:"1:375824896184:web:9d1bcbe4df81e651f9644d"};
+const app=initializeApp(FB), auth=getAuth(app), db=getFirestore(app);
+
+let usuario=null, editandoId=null;
+let mapaEd=null, mapaLive=null;
+let marcadoresEd=[], polyEd=null;
+let marcadoresLive={};
+let puntoClickTmp=null; // coords del último clic en el mapa
+let incDocs=[];
+
+// ── AUTH ──
+onAuthStateChanged(auth, async user=>{
+  if(!user){window.location.href='../index.html';return;}
+  const s=await getDoc(doc(db,'usuarios',user.uid));
+  if(!s.exists()||s.data().rol!=='administrador'){window.location.href='../index.html';return;}
+  usuario={uid:user.uid,...s.data()};
+  document.getElementById('admin-nom').textContent=usuario.nombre||'';
+  cargarRecorridos();
+  escucharIncidencias();
+  iniciarMapaEditor();
+});
+
+// ── TABS ──
+window.cambiarTab=function(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('on',['recorridos','mapa','incidencias'][i]===tab);
+  });
+  document.querySelectorAll('.tab-cont').forEach(c=>c.classList.remove('on'));
+  document.getElementById(`tab-${tab}`).classList.add('on');
+
+  // Gestión de sidebar
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const esMovil = window.innerWidth < 680;
+
+  if (tab === 'recorridos') {
+    // En escritorio: mostrar sidebar como columna
+    // En móvil: sidebar sigue oculta hasta que toquen hamburguesa
+    if (esMovil) {
+      sb.style.display = 'flex';
+      sb.classList.remove('abierta');
+      ov.classList.remove('on');
+    } else {
+      sb.style.display = 'flex';
+      sb.classList.remove('abierta');
+    }
+  } else {
+    // En otras pestañas, ocultar sidebar completamente
+    sb.style.display = 'none';
+    sb.classList.remove('abierta');
+    ov.classList.remove('on');
+  }
+
+  if(tab==='mapa'){iniciarMapaLive();}
+  if(tab==='incidencias'){renderIncidencias();}
+  setTimeout(()=>{if(mapaEd)mapaEd.invalidateSize();if(mapaLive)mapaLive.invalidateSize();},100);
+};
+
+// ── MAPA EDITOR ──
+function iniciarMapaEditor(){
+  if(mapaEd)return;
+  mapaEd=L.map('mapa-ed',{zoomControl:true}).setView([36.6849,-6.1259],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(mapaEd);
+  mapaEd.on('click',e=>onMapaClick(e));
+}
+
+function onMapaClick(e){
+  puntoClickTmp={lat:e.latlng.lat,lng:e.latlng.lng};
+  const punto=mapaEd.latLngToContainerPoint(e.latlng);
+  const popup=document.getElementById('popup-mapa');
+  const mapa=document.getElementById('mapa-ed');
+  const rect=mapa.getBoundingClientRect();
+  const popupW = window.innerWidth < 680 ? Math.min(window.innerWidth - 40, 260) : 220;
+  const popupH = 240;
+  let x=punto.x+rect.left-popupW/2;
+  let y=punto.y+rect.top-popupH-20;
+  // Si no cabe arriba, ponerlo abajo del clic
+  if(y < 10) y = punto.y + rect.top + 20;
+  // Asegurar que está dentro de la ventana
+  x=Math.max(10,Math.min(x, window.innerWidth - popupW - 10));
+  y=Math.max(10,Math.min(y, window.innerHeight - popupH - 10));
+  popup.style.width = popupW + 'px';
+  popup.style.left=x+'px';
+  popup.style.top=y+'px';
+  document.getElementById('popup-coord').textContent=`📍 ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  document.getElementById('pop-num').value='';
+  document.getElementById('pop-calle').value='';
+  document.getElementById('pop-nota').value='';
+  popup.classList.add('on');
+  setTimeout(()=>document.getElementById('pop-num').focus(), 100);
+}
+
+window.cerrarPopup=function(){
+  document.getElementById('popup-mapa').classList.remove('on');
+  puntoClickTmp=null;
+};
+
+window.confirmarPunto=function(){
+  if(!puntoClickTmp)return;
+  const num=document.getElementById('pop-num').value.trim();
+  const calle=document.getElementById('pop-calle').value.trim();
+  const nota=document.getElementById('pop-nota').value.trim();
+  addPuntoALista({numero:num,calle,nota,coords:{lat:puntoClickTmp.lat,lng:puntoClickTmp.lng}});
+  cerrarPopup();
+  refrescarLineasMapa();
+};
+
+// También con Enter
+document.getElementById('pop-nota').addEventListener('keydown',e=>{if(e.key==='Enter')window.confirmarPunto();});
+
+function addPuntoALista(datos={}){
+  const lista=document.getElementById('puntos-lista');
+  const idx=lista.children.length+1;
+  const row=document.createElement('div');
+  row.className='pt-row';
+  row.dataset.lat=datos.coords?.lat||'';
+  row.dataset.lng=datos.coords?.lng||'';
+  const lat=datos.coords?.lat?datos.coords.lat.toFixed(5):'';
+  const lng=datos.coords?.lng?datos.coords.lng.toFixed(5):'';
+  row.innerHTML=`
+    <span class="pt-n">${idx}</span>
+    <input class="pt-num"   type="text" placeholder="C-01" value="${datos.numero||''}">
+    <input class="pt-calle" type="text" placeholder="Calle, número" value="${datos.calle||''}">
+    <input class="pt-nota"  type="text" placeholder="Nota especial" value="${datos.nota||''}">
+    <span class="pt-coords">${lat?`${lat},${lng}`:''}</span>
+    <button class="pt-del" onclick="quitarPunto(this)">✕</button>`;
+  lista.appendChild(row);
+  renumerarPuntos();
+}
+
+window.addPuntoManual=function(){addPuntoALista();};
+
+window.quitarPunto=function(btn){
+  btn.closest('.pt-row').remove();
+  renumerarPuntos();
+  refrescarLineasMapa();
+};
+
+function renumerarPuntos(){
+  document.querySelectorAll('#puntos-lista .pt-row').forEach((r,i)=>r.querySelector('.pt-n').textContent=i+1);
+}
+
+function refrescarLineasMapa(){
+  if(!mapaEd)return;
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  const pts=[];
+  document.querySelectorAll('#puntos-lista .pt-row').forEach((row,i)=>{
+    const lat=parseFloat(row.dataset.lat||0);
+    const lng=parseFloat(row.dataset.lng||0);
+    if(!lat||!lng)return;
+    pts.push([lat,lng]);
+    const calle=row.querySelector('.pt-calle').value||'';
+    const num=row.querySelector('.pt-num').value||'';
+    const ico=L.divIcon({
+      html:`<div style="background:${i===0?'#52b788':'#7c3aed'};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.5)">${i+1}</div>`,
+      className:'',iconAnchor:[12,12]
+    });
+    const m=L.marker([lat,lng],{icon:ico}).addTo(mapaEd).bindPopup(`<b>${num}</b><br>${calle}`);
+    marcadoresEd.push(m);
+  });
+  if(pts.length>1){
+    polyEd=L.polyline(pts,{color:'#a78bfa',weight:2.5,dashArray:'7 4'}).addTo(mapaEd);
+  }
+}
+
+// ── RECORRIDOS ──
+async function cargarRecorridos(){
+  const lista=document.getElementById('sidebar-lista');
+  try{
+    const snap=await getDocs(collection(db,'recorridos'));
+    if(snap.empty){lista.innerHTML='<div class="empty">No hay recorridos aún</div>';return;}
+    const docs=[];
+    snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(a.numero||0)-(b.numero||0));
+    lista.innerHTML='';
+    docs.forEach(r=>{
+      const div=document.createElement('div');
+      div.className='rec-item';
+      div.innerHTML=`
+        <div class="ri-num">R${r.numero||'?'}</div>
+        <div class="ri-nom">${r.nombre||'Sin nombre'}</div>
+        <div class="ri-meta">${(r.contenedores||[]).length} puntos${r.zona?` · ${r.zona}`:''}</div>
+        <div class="ri-btns">
+          <button class="ri-btn ri-ed"  onclick="editarRec('${r.id}');event.stopPropagation()">Editar</button>
+          <button class="ri-btn ri-del" onclick="borrarRec('${r.id}');event.stopPropagation()">Borrar</button>
+        </div>`;
+      lista.appendChild(div);
+    });
+  }catch(e){lista.innerHTML='<div class="empty" style="color:var(--rojo)">Error al cargar</div>';}
+}
+
+window.nuevoRecorrido=function(){
+  editandoId=null;
+  document.getElementById('pan-tit').textContent='NUEVO RECORRIDO';
+  document.getElementById('ed-num').value='';
+  document.getElementById('ed-nombre').value='';
+  document.getElementById('ed-zona').value='';
+  document.getElementById('ed-tel').value='';
+  document.getElementById('ed-vert').value='';
+  document.getElementById('puntos-lista').innerHTML='';
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  document.getElementById('mapa-hint').classList.remove('oculto');
+};
+
+window.editarRec=async function(id){
+  editandoId=id;
+  const snap=await getDoc(doc(db,'recorridos',id));
+  if(!snap.exists())return;
+  const r=snap.data();
+  document.getElementById('pan-tit').textContent='EDITAR RECORRIDO';
+  document.getElementById('ed-num').value=r.numero||'';
+  document.getElementById('ed-nombre').value=r.nombre||'';
+  document.getElementById('ed-zona').value=r.zona||'';
+  document.getElementById('ed-tel').value=r.telefonoSuperior||'';
+  const cv=r.coordsVertedero;
+  if(cv)document.getElementById('ed-vert').value=`${cv.lat},${cv.lng}`;
+  document.getElementById('puntos-lista').innerHTML='';
+  (r.contenedores||[]).forEach(c=>addPuntoALista(c));
+  setTimeout(()=>refrescarLineasMapa(),100);
+  document.getElementById('mapa-hint').classList.add('oculto');
+};
+
+window.cancelarEdicion=function(){
+  editandoId=null;
+  document.getElementById('puntos-lista').innerHTML='';
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  document.getElementById('mapa-hint').classList.remove('oculto');
+};
+
+window.borrarRec=async function(id){
+  if(!confirm('¿Borrar este recorrido?'))return;
+  await deleteDoc(doc(db,'recorridos',id));
+  cargarRecorridos();
+};
+
+window.guardarRecorrido=async function(){
+  const nombre=document.getElementById('ed-nombre').value.trim();
+  if(!nombre){alert('El nombre es obligatorio');return;}
+  const rows=document.querySelectorAll('#puntos-lista .pt-row');
+  const contenedores=Array.from(rows).map(r=>({
+    numero:r.querySelector('.pt-num').value.trim(),
+    calle:r.querySelector('.pt-calle').value.trim(),
+    nota:r.querySelector('.pt-nota').value.trim(),
+    coords:r.dataset.lat?{lat:parseFloat(r.dataset.lat),lng:parseFloat(r.dataset.lng)}:null
+  })).filter(c=>c.calle||c.coords);
+  const vStr=document.getElementById('ed-vert').value.trim();
+  let cv=null;
+  if(vStr){const[la,ln]=vStr.split(',').map(Number);if(!isNaN(la))cv={lat:la,lng:ln};}
+  const datos={
+    numero:parseInt(document.getElementById('ed-num').value)||0,
+    nombre,zona:document.getElementById('ed-zona').value.trim(),
+    telefonoSuperior:document.getElementById('ed-tel').value.trim(),
+    coordsVertedero:cv,contenedores,actualizadoEn:serverTimestamp()
+  };
+  const btn=document.querySelector('.btn-guardar-rec');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    if(editandoId)await updateDoc(doc(db,'recorridos',editandoId),datos);
+    else await addDoc(collection(db,'recorridos'),datos);
+    cancelarEdicion();cargarRecorridos();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='💾 Guardar';}
+};
+
+// ── MAPA EN VIVO ──
+function iniciarMapaLive(){
+  const wrap=document.getElementById('mapa-live-wrap');
+  wrap.style.height=(window.innerHeight-130)+'px';
+  if(mapaLive){mapaLive.invalidateSize();return;}
+  mapaLive=L.map('mapa-live').setView([36.6849,-6.1259],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapaLive);
+  onSnapshot(collection(db,'localizacion'),snap=>{
+    snap.forEach(d=>{
+      const dat=d.data(),uid=d.id;
+      if(!dat.lat||!dat.lng)return;
+      const est=dat.estado||'en_ruta';
+      const color=est==='accidente'||est==='averia'?'#e63946':est==='vertedero'?'#f4a261':'#52b788';
+      const ico=L.divIcon({html:`<div style="background:${color};width:13px;height:13px;border-radius:50%;border:2px solid white;box-shadow:0 0 7px ${color}"></div>`,className:'',iconAnchor:[6,6]});
+      const pop=`<b>${dat.conductorNombre||'Conductor'}</b><br>${est}<br>Punto: ${(dat.indexContenedor||0)+1}`;
+      if(marcadoresLive[uid])marcadoresLive[uid].setLatLng([dat.lat,dat.lng]).setIcon(ico).setPopupContent(pop);
+      else marcadoresLive[uid]=L.marker([dat.lat,dat.lng],{icon:ico}).addTo(mapaLive).bindPopup(pop);
+    });
+  });
+}
+
+// ── INCIDENCIAS ──
+function escucharIncidencias(){
+  onSnapshot(collection(db,'incidencias'),snap=>{
+    incDocs=[];
+    snap.forEach(d=>incDocs.push({id:d.id,...d.data()}));
+    incDocs.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    const pend=incDocs.filter(i=>i.estado==='pendiente').length;
+    document.getElementById('cnt-inc').textContent=`${pend} pendiente${pend!==1?'s':''} · ${incDocs.length} total`;
+    document.getElementById('tab-inc-btn').textContent=pend?`⚠ Incidencias (${pend})`:'⚠ Incidencias';
+  });
+}
+
+function renderIncidencias(){
+  const lista=document.getElementById('inc-lista');
+  if(!incDocs.length){lista.innerHTML='<div class="empty">No hay incidencias</div>';return;}
+  lista.innerHTML=incDocs.map(i=>`
+    <div class="inc-card">
+      <div class="inc-header">
+        <div>
+          <div class="inc-tipo">${i.tipoEtiqueta||i.tipo||'Incidencia'}</div>
+          <div style="font-size:11px;color:var(--gris);margin-top:1px">${i.fechaTexto||''}</div>
+        </div>
+        <span class="inc-tag ${i.estado==='pendiente'?'tag-pend':'tag-res'}">${i.estado==='pendiente'?'Pendiente':'Resuelta'}</span>
+      </div>
+      <div class="inc-det">
+        Inspector: ${i.inspectorNombre||'—'}<br>
+        ${i.recorridoNombre?`Recorrido: ${i.recorridoNombre}<br>`:''}
+        ${i.contenedorRef?`<span style="color:var(--vc);font-weight:500">📍 Contenedor ${i.contenedorRef.numero||''} · ${i.contenedorRef.calle||''}</span>${i.contenedorRef.nota?`<br><span style="font-size:11px;opacity:0.7">⚠ ${i.contenedorRef.nota}</span>`:''}<br>`:''}
+        ${i.descripcion?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);">${i.descripcion}</div>`:''}
+      </div>
+      ${i.foto?`<img class="inc-foto" src="${i.foto}" alt="foto">`:''}
+      ${i.coords?`<div style="font-size:11px;color:var(--gris);margin-top:5px">📍 <a href="https://maps.google.com/?q=${i.coords.lat},${i.coords.lng}" target="_blank" style="color:var(--purpura-c)">Ver en mapa</a></div>`:''}
+      ${i.estado==='pendiente'?`<button class="btn-res" onclick="resolverInc('${i.id}')">✓ Marcar resuelta</button>`:''}
+    </div>`).join('');
+}
+
+window.resolverInc=async function(id){await updateDoc(doc(db,'incidencias',id),{estado:'resuelta'});};
+window.cerrarSesion=async function(){await signOut(auth);window.location.href='../index.html';};
+
+window.toggleSidebar = function() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const tabRec = document.querySelectorAll('.tab')[0];
+  if (!tabRec.classList.contains('on')) {
+    cambiarTab('recorridos');
+    setTimeout(() => {
+      sb.classList.add('abierta');
+      ov.classList.add('on');
+      document.body.classList.add('sidebar-open');
+    }, 50);
+    return;
+  }
+  sb.style.display = 'flex';
+  const abierta = sb.classList.toggle('abierta');
+  ov.classList.toggle('on', abierta);
+  document.body.classList.toggle('sidebar-open', abierta);
+};
+
+// Cerrar sidebar al seleccionar un recorrido (en móvil)
+document.addEventListener('click', e => {
+  if (window.innerWidth < 680 && e.target.closest('.rec-item')) {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    sb.classList.remove('abierta');
+    ov.classList.remove('on');
+    document.body.classList.remove('sidebar-open');
+  }
+});
+</script>
+</body>
+</html>
