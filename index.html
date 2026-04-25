@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECORRIDOS — Gestión de Rutas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --negro: #0d0d0d;
+      --blanco: #f5f3ee;
+      --verde: #2d6a4f;
+      --verde-claro: #52b788;
+      --verde-oscuro: #1b4332;
+      --amarillo: #f4a261;
+      --gris: #6b7280;
+      --gris-claro: #e8e6e1;
+      --error: #c0392b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: var(--negro);
+      color: var(--blanco);
+      font-family: 'IBM Plex Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Fondo con textura sutil */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(45,106,79,0.35) 0%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    /* Logo / cabecera */
+    .logo-area {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .logo-icono {
+      width: 64px;
+      height: 64px;
+      background: var(--verde);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 0 1px rgba(82,183,136,0.3), 0 8px 32px rgba(45,106,79,0.4);
+    }
+
+    .logo-icono svg {
+      width: 34px;
+      height: 34px;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      letter-spacing: 6px;
+      color: var(--blanco);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .subtitulo {
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--verde-claro);
+      font-weight: 500;
+    }
+
+    /* Tarjeta login */
+    .card {
+      background: rgba(245,243,238,0.04);
+      border: 1px solid rgba(245,243,238,0.1);
+      border-radius: 16px;
+      padding: 36px 32px;
+      backdrop-filter: blur(12px);
+    }
+
+    .campo {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gris);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      background: rgba(245,243,238,0.06);
+      border: 1px solid rgba(245,243,238,0.12);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px;
+      color: var(--blanco);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--verde-claro);
+      background: rgba(82,183,136,0.06);
+    }
+
+    input::placeholder { color: rgba(245,243,238,0.25); }
+
+    .btn-login {
+      width: 100%;
+      background: var(--verde);
+      color: var(--blanco);
+      border: none;
+      border-radius: 10px;
+      padding: 15px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(45,106,79,0.4);
+    }
+
+    .btn-login:hover {
+      background: var(--verde-claro);
+      box-shadow: 0 4px 28px rgba(82,183,136,0.45);
+    }
+
+    .btn-login:active { transform: scale(0.98); }
+
+    .btn-login:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Spinner dentro del botón */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .mensaje-error {
+      background: rgba(192,57,43,0.15);
+      border: 1px solid rgba(192,57,43,0.35);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #e88b7e;
+      margin-top: 16px;
+      display: none;
+    }
+
+    /* Pie */
+    .pie {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 11px;
+      color: rgba(245,243,238,0.2);
+      letter-spacing: 1px;
+    }
+
+    /* Animación entrada */
+    .login-container {
+      animation: fadeUp 0.5s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-container">
+
+  <div class="logo-area">
+    <div class="logo-icono">
+      <!-- Icono camión de recogida simplificado -->
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="12" width="20" height="12" rx="2" fill="#52b788"/>
+        <rect x="23" y="16" width="8" height="8" rx="1.5" fill="#52b788"/>
+        <path d="M23 16 L28 16 L31 20 L31 24 L23 24 Z" fill="#2d6a4f"/>
+        <circle cx="9" cy="25" r="3" fill="#1b4332" stroke="#52b788" stroke-width="1.5"/>
+        <circle cx="22" cy="25" r="3" fill="#1b4332" stroke="#52b788" stroke-width="1.5"/>
+        <rect x="3" y="14" width="9" height="7" rx="1" fill="#1b4332" opacity="0.4"/>
+      </svg>
+    </div>
+    <h1>RECORRIDOS</h1>
+    <p class="subtitulo">Gestión de rutas de recogida</p>
+  </div>
+
+  <div class="card">
+    <div class="campo">
+      <label for="usuario">Usuario</label>
+      <input type="text" id="usuario" placeholder="Introduce tu usuario" autocomplete="username">
+    </div>
+    <div class="campo">
+      <label for="contrasena">Contraseña</label>
+      <input type="password" id="contrasena" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btnLogin" onclick="iniciarSesion()">
+      Entrar
+    </button>
+    <div class="mensaje-error" id="mensajeError">
+      Usuario o contraseña incorrectos. Inténtalo de nuevo.
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" onclick="mostrarAyudaClave(event)" style="font-size:12px;color:var(--gris);text-decoration:none;letter-spacing:1px">¿Has olvidado tu contraseña?</a>
+    </div>
+    <div id="ayuda-clave" style="display:none;margin-top:12px;background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.25);border-radius:10px;padding:14px;font-size:12px;color:var(--gris-claro);line-height:1.6">
+      <strong style="color:var(--blanco)">Recuperar contraseña</strong>
+      <p style="margin:8px 0">Si tu cuenta tiene un email real (Gmail, etc.), recibirás un enlace por correo:</p>
+      <input type="email" id="email-recuperacion" placeholder="tu-email@gmail.com" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 11px;font-size:13px;color:var(--blanco);font-family:inherit;outline:none;margin-bottom:8px">
+      <button onclick="enviarRecuperacion()" style="width:100%;background:var(--verde);color:var(--blanco);border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:1px">📧 ENVIAR EMAIL DE RECUPERACIÓN</button>
+      <div id="msg-recuperacion" style="margin-top:10px;font-size:11px;display:none"></div>
+      <p style="margin:12px 0 4px;font-size:11px;color:var(--gris)">Si tu cuenta solo tiene email interno (@recorridos.app), pide al administrador que te resetee la contraseña.</p>
+    </div>
+  </div>
+
+  <p class="pie">RECORRIDOS v1.0 · Acceso restringido</p>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ═══════════════════════════════════════════════════════════════
+  // CONFIGURACIÓN FIREBASE — sustituye con los datos de tu proyecto
+  // Los encuentras en: Firebase Console → ⚙️ → Configuración del proyecto
+  // ═══════════════════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",
+    authDomain:        "recorridos-app-f362a.firebaseapp.com",
+    projectId:         "recorridos-app-f362a",
+    storageBucket:     "recorridos-app-f362a.firebasestorage.app",
+    messagingSenderId: "375824896184",
+    appId:             "1:375824896184:web:9d1bcbe4df81e651f9644d"
+  };
+  // ═══════════════════════════════════════════════════════════════
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  window.iniciarSesion = async function() {
+    const usuario   = document.getElementById('usuario').value.trim();
+    const contrasena = document.getElementById('contrasena').value;
+    const btn       = document.getElementById('btnLogin');
+    const error     = document.getElementById('mensajeError');
+
+    if (!usuario || !contrasena) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Entrando...';
+    error.style.display = 'none';
+
+    try {
+      const email = usuario.includes('@') ? usuario : `${usuario}@recorridos.app`;
+      const credencial = await signInWithEmailAndPassword(auth, email, contrasena);
+
+      const snap = await getDoc(doc(db, 'usuarios', credencial.user.uid));
+      if (!snap.exists()) throw new Error('Sin perfil');
+
+      const datos = snap.data();
+      const rol = datos.rol;
+
+      // Si requiere cambio obligatorio de contraseña, redirigir a pantalla especial
+      if (datos.requiereCambioClave === true) {
+        // Guardar marca temporal en sessionStorage (se borra al cerrar pestaña)
+        sessionStorage.setItem('requiereCambio', 'true');
+        sessionStorage.setItem('rolDestino', rol);
+        window.location.href = 'pages/cambio-obligatorio.html';
+        return;
+      }
+
+      if      (rol === 'administrador') window.location.href = 'pages/admin.html';
+      else if (rol === 'inspector')     window.location.href = 'pages/inspector.html';
+      else                              window.location.href = 'pages/conductor.html';
+
+    } catch (e) {
+      error.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = 'Entrar';
+    }
+  };
+
+  document.getElementById('contrasena').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.iniciarSesion();
+  });
+
+  window.mostrarAyudaClave = function(e){
+    e.preventDefault();
+    const a = document.getElementById('ayuda-clave');
+    a.style.display = a.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.enviarRecuperacion = async function(){
+    const email = document.getElementById('email-recuperacion').value.trim();
+    const msg = document.getElementById('msg-recuperacion');
+    msg.style.display = 'block';
+
+    if (!email || !email.includes('@')) {
+      msg.style.color = '#e88b7e';
+      msg.textContent = '⚠ Introduce un email válido';
+      return;
+    }
+    if (email.endsWith('@recorridos.app')) {
+      msg.style.color = '#e88b7e';
+      msg.textContent = '⚠ Los emails internos no pueden recuperarse así. Pide al administrador que resetee tu contraseña.';
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      msg.style.color = 'var(--verde-claro)';
+      msg.innerHTML = '✓ Email enviado a <strong>' + email + '</strong>.<br>Revisa tu bandeja (también la carpeta SPAM) y sigue el enlace.';
+    } catch(e) {
+      msg.style.color = '#e88b7e';
+      if (e.code === 'auth/user-not-found') {
+        msg.textContent = '⚠ No existe ninguna cuenta con ese email';
+      } else if (e.code === 'auth/invalid-email') {
+        msg.textContent = '⚠ El email no tiene formato válido';
+      } else {
+        msg.textContent = '⚠ Error: ' + e.message;
+      }
+    }
+  };
+</script>
+
+</body>
+</html>
