@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECORRIDOS — Cambio de contraseña</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --negro: #0d0d0d;
+      --blanco: #f5f3ee;
+      --verde: #2d6a4f;
+      --verde-claro: #52b788;
+      --amarillo: #f4a261;
+      --gris: #6b7280;
+      --rojo: #c0392b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--negro); color: var(--blanco);
+      font-family: 'IBM Plex Sans', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(244,162,97,0.25) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .contenedor {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 460px;
+    }
+    .icono-aviso {
+      width: 70px; height: 70px; border-radius: 50%;
+      background: var(--amarillo);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin: 0 auto 24px;
+      box-shadow: 0 0 40px rgba(244,162,97,0.4);
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 38px; letter-spacing: 4px;
+      text-align: center; line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    .subtitulo {
+      text-align: center; font-size: 13px;
+      color: var(--gris); margin-bottom: 28px; line-height: 1.6;
+    }
+    .card {
+      background: rgba(245,243,238,0.04);
+      border: 1px solid rgba(245,243,238,0.1);
+      border-radius: 16px; padding: 32px 28px;
+      backdrop-filter: blur(12px);
+    }
+    .info-aviso {
+      background: rgba(244,162,97,0.1);
+      border: 1px solid rgba(244,162,97,0.25);
+      border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 22px;
+      font-size: 12px; color: var(--amarillo);
+      line-height: 1.5;
+    }
+    .campo { margin-bottom: 18px; }
+    label {
+      display: block; font-size: 11px;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--gris); margin-bottom: 8px; font-weight: 500;
+    }
+    input {
+      width: 100%; background: rgba(245,243,238,0.06);
+      border: 1px solid rgba(245,243,238,0.12);
+      border-radius: 10px; padding: 14px 16px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px; color: var(--blanco); outline: none;
+    }
+    input:focus { border-color: var(--verde-claro); }
+    .btn {
+      width: 100%; background: var(--verde); color: var(--blanco);
+      border: none; border-radius: 10px; padding: 15px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(45,106,79,0.4);
+      margin-top: 8px;
+    }
+    .btn:hover { background: var(--verde-claro); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .mensaje-error {
+      background: rgba(192,57,43,0.15);
+      border: 1px solid rgba(192,57,43,0.35);
+      border-radius: 8px; padding: 11px 14px;
+      font-size: 13px; color: #e88b7e;
+      margin-top: 14px; display: none;
+    }
+    .mensaje-ok {
+      background: rgba(82,183,136,0.15);
+      border: 1px solid rgba(82,183,136,0.35);
+      border-radius: 8px; padding: 11px 14px;
+      font-size: 13px; color: var(--verde-claro);
+      margin-top: 14px; display: none;
+    }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .req-clave {
+      font-size: 11px; color: var(--gris);
+      margin-top: 6px; line-height: 1.5;
+    }
+    .req-clave .ok { color: var(--verde-claro); }
+  </style>
+</head>
+<body>
+
+<div class="contenedor">
+  <div class="icono-aviso">🔐</div>
+  <h1>CAMBIO DE<br>CONTRASEÑA</h1>
+  <p class="subtitulo">
+    Por seguridad, debes establecer una contraseña personal antes de continuar.
+  </p>
+
+  <div class="card">
+    <div class="info-aviso">
+      <strong>Primer acceso:</strong> esta pantalla solo aparece una vez. Elige una contraseña que recuerdes y solo tú conozcas.
+    </div>
+
+    <div class="campo">
+      <label>Nueva contraseña</label>
+      <input type="password" id="clave-nueva" placeholder="Mínimo 6 caracteres" oninput="validar()">
+      <div class="req-clave" id="req-clave">
+        Requisitos: mínimo 6 caracteres
+      </div>
+    </div>
+
+    <div class="campo">
+      <label>Repetir nueva contraseña</label>
+      <input type="password" id="clave-repetir" placeholder="Repite la contraseña" oninput="validar()">
+    </div>
+
+    <button class="btn" id="btnGuardar" onclick="guardarClave()" disabled>
+      Guardar y continuar
+    </button>
+
+    <div class="mensaje-error" id="msgError"></div>
+    <div class="mensaje-ok" id="msgOk"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, updatePassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",
+    authDomain:        "recorridos-app-f362a.firebaseapp.com",
+    projectId:         "recorridos-app-f362a",
+    storageBucket:     "recorridos-app-f362a.firebasestorage.app",
+    messagingSenderId: "375824896184",
+    appId:             "1:375824896184:web:9d1bcbe4df81e651f9644d"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // Verificar que hay sesión activa y que efectivamente requiere cambio
+  if (sessionStorage.getItem('requiereCambio') !== 'true') {
+    window.location.href = '../index.html';
+  }
+
+  let usuarioAuth = null;
+
+  onAuthStateChanged(auth, user => {
+    if (!user) {
+      window.location.href = '../index.html';
+      return;
+    }
+    usuarioAuth = user;
+  });
+
+  window.validar = function() {
+    const nueva = document.getElementById('clave-nueva').value;
+    const rep = document.getElementById('clave-repetir').value;
+    const btn = document.getElementById('btnGuardar');
+    const req = document.getElementById('req-clave');
+
+    let ok = true;
+    let msg = 'Requisitos: ';
+
+    if (nueva.length >= 6) {
+      msg += '<span class="ok">✓ 6+ caracteres</span>';
+    } else {
+      msg += 'mínimo 6 caracteres';
+      ok = false;
+    }
+
+    if (rep && nueva && rep === nueva) {
+      msg += ' · <span class="ok">✓ coinciden</span>';
+    } else if (rep) {
+      msg += ' · no coinciden';
+      ok = false;
+    } else {
+      ok = false;
+    }
+
+    req.innerHTML = msg;
+    btn.disabled = !ok;
+  };
+
+  window.guardarClave = async function() {
+    const nueva = document.getElementById('clave-nueva').value;
+    const rep = document.getElementById('clave-repetir').value;
+    const btn = document.getElementById('btnGuardar');
+    const error = document.getElementById('msgError');
+    const ok = document.getElementById('msgOk');
+    error.style.display = 'none';
+    ok.style.display = 'none';
+
+    if (!usuarioAuth) {
+      error.textContent = 'Sesión no detectada. Recarga la página.';
+      error.style.display = 'block';
+      return;
+    }
+    if (nueva.length < 6) { error.textContent = 'La contraseña debe tener al menos 6 caracteres'; error.style.display = 'block'; return; }
+    if (nueva !== rep) { error.textContent = 'Las contraseñas no coinciden'; error.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Guardando...';
+
+    try {
+      // Cambiar contraseña en Firebase Auth
+      await updatePassword(usuarioAuth, nueva);
+      // Quitar el flag en Firestore
+      await updateDoc(doc(db, 'usuarios', usuarioAuth.uid), {
+        requiereCambioClave: false,
+        ultimoCambioClave: serverTimestamp()
+      });
+      // Limpiar marca de sessionStorage
+      sessionStorage.removeItem('requiereCambio');
+      const rolDestino = sessionStorage.getItem('rolDestino') || 'conductor';
+      sessionStorage.removeItem('rolDestino');
+
+      ok.textContent = '✓ Contraseña actualizada. Redirigiendo...';
+      ok.style.display = 'block';
+
+      // Redirigir según rol
+      setTimeout(() => {
+        if (rolDestino === 'administrador') window.location.href = 'admin.html';
+        else if (rolDestino === 'inspector') window.location.href = 'inspector.html';
+        else window.location.href = 'conductor.html';
+      }, 1200);
+
+    } catch (e) {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar y continuar';
+      if (e.code === 'auth/requires-recent-login') {
+        error.textContent = 'Por seguridad debes volver a iniciar sesión.';
+      } else if (e.code === 'auth/weak-password') {
+        error.textContent = 'La contraseña es demasiado débil';
+      } else {
+        error.textContent = 'Error: ' + e.message;
+      }
+      error.style.display = 'block';
+    }
+  };
+</script>
+
+</body>
+</html>
