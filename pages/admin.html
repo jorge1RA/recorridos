@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECORRIDOS — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root{
+      --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;
+      --blanco:#f0ede8;--gris:#888;--borde:rgba(255,255,255,0.09);
+      --purpura:#7c3aed;--purpura-c:#a78bfa;
+      --verde:#52b788;--amarillo:#f4a261;--rojo:#e63946;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--blanco);font-family:'IBM Plex Sans',sans-serif;}
+
+    /* ── TOPBAR ── */
+    .topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--borde);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;}
+    .spacer{flex:1;}
+    .badge{background:rgba(124,58,237,0.25);border:1px solid rgba(124,58,237,0.4);color:var(--purpura-c);border-radius:20px;padding:3px 10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+    .topbar-nom{font-size:13px;color:var(--gris);}
+    .btn-xs{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+
+    /* ── TABS ── */
+    .tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--borde);}
+    .tab{flex:1;padding:10px;text-align:center;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;cursor:pointer;color:var(--gris);border-bottom:2px solid transparent;transition:all .2s;}
+    .tab.on{color:var(--purpura-c);border-bottom-color:var(--purpura-c);}
+
+    /* ── LAYOUT PRINCIPAL ── */
+    .main{display:flex;height:calc(100vh - 90px);}
+
+    /* ── SIDEBAR ── */
+    .sidebar{width:320px;flex-shrink:0;border-right:1px solid var(--borde);display:flex;flex-direction:column;overflow:hidden;}
+    .sidebar-head{padding:14px 16px;border-bottom:1px solid var(--borde);display:flex;align-items:center;justify-content:space-between;}
+    .sidebar-tit{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;}
+    .btn-nuevo{background:var(--purpura);color:white;border:none;border-radius:7px;padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;letter-spacing:1px;}
+    .sidebar-lista{flex:1;overflow-y:auto;}
+    .rec-item{padding:12px 16px;border-bottom:1px solid var(--borde);cursor:pointer;transition:background .15s;}
+    .rec-item:hover{background:rgba(255,255,255,0.03);}
+    .rec-item.activo{background:rgba(124,58,237,0.08);border-left:3px solid var(--purpura-c);}
+    .ri-num{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--purpura-c);}
+    .ri-nom{font-size:13px;font-weight:500;}
+    .ri-meta{font-size:11px;color:var(--gris);margin-top:2px;}
+    .ri-btns{display:flex;gap:5px;margin-top:7px;}
+    .ri-btn{border-radius:5px;padding:4px 9px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid;font-family:'IBM Plex Sans',sans-serif;}
+    .ri-ed{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.35);color:var(--purpura-c);}
+    .ri-del{background:rgba(230,57,70,0.1);border-color:rgba(230,57,70,0.3);color:var(--rojo);}
+
+    /* ── CONTENIDO PRINCIPAL (mapa + editor) ── */
+    .contenido{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+    /* ── MAPA EDITOR ── */
+    #mapa-ed{flex:1;background:#1a2020;}
+    .mapa-hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);color:var(--blanco);border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap;z-index:500;pointer-events:none;border:1px solid rgba(255,255,255,0.1);}
+    .mapa-hint.oculto{display:none;}
+
+    /* ── PANEL INFERIOR EDITOR ── */
+    .panel-ed{flex-shrink:0;background:var(--bg2);border-top:1px solid var(--borde);max-height:260px;overflow-y:auto;}
+    .panel-ed-head{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--borde);position:sticky;top:0;background:var(--bg2);z-index:2;}
+    .pan-tit{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;color:var(--purpura-c);}
+    .pan-btns{display:flex;gap:7px;}
+    .btn-guardar-rec{background:var(--purpura);color:white;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-canc-rec{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:7px 12px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+
+    .ed-campos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 16px;}
+    .campo-ed label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin-bottom:4px;font-weight:500;}
+    .campo-ed input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .campo-ed input:focus{border-color:var(--purpura-c);}
+
+    /* ── POPUP FLOTANTE EN EL MAPA ── */
+    .popup-mapa{
+      position:absolute;z-index:1000;
+      background:var(--bg2);border:1px solid var(--purpura-c);
+      border-radius:12px;padding:14px;width:220px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6);
+      display:none;
+    }
+    .popup-mapa.on{display:block;}
+    .popup-tit{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--purpura-c);font-weight:600;margin-bottom:10px;}
+    .popup-mapa input{width:100%;background:rgba(255,255,255,0.07);border:1px solid var(--borde);border-radius:7px;padding:7px 9px;font-size:13px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;margin-bottom:6px;}
+    .popup-mapa input:focus{border-color:var(--purpura-c);}
+    .popup-btns{display:flex;gap:6px;margin-top:4px;}
+    .popup-ok{flex:1;background:var(--purpura);color:white;border:none;border-radius:7px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .popup-skip{background:rgba(255,255,255,0.06);border:1px solid var(--borde);color:var(--gris);border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer;}
+    .popup-coord{font-size:10px;color:var(--purpura-c);margin-bottom:8px;opacity:0.8;}
+
+    /* ── LISTA PUNTOS COMPACTA ── */
+    .puntos-lista-compact{display:flex;flex-direction:column;gap:0;}
+    .pt-row{display:flex;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid var(--borde);transition:background .15s;}
+    .pt-row:hover{background:rgba(255,255,255,0.02);}
+    .pt-n{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--purpura-c);min-width:24px;}
+    .pt-num{width:64px;background:rgba(255,255,255,0.05);border:1px solid var(--borde);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-calle{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--borde);border-radius:5px;padding:4px 7px;font-size:12px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-nota{width:140px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:4px 6px;font-size:11px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;}
+    .pt-coords{font-size:10px;color:var(--purpura-c);min-width:80px;text-align:right;}
+    .pt-del{background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.6;}
+    .pt-del:hover{opacity:1;}
+
+    /* ── TABS CONTENIDO (mapa vivo / incidencias) ── */
+    .tab-cont{flex:1;display:none;flex-direction:column;}
+    .tab-cont.on{display:flex;}
+    #mapa-live-wrap{flex:1;}
+    #mapa-live{height:100%;}
+
+    /* ── INCIDENCIAS ── */
+    .inc-lista{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
+    .inc-card{background:var(--bg3);border:1px solid var(--borde);border-radius:10px;padding:12px 14px;}
+    .inc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+    .inc-tipo{font-size:13px;font-weight:600;color:var(--amarillo);}
+    .inc-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;border-radius:8px;padding:2px 7px;font-weight:600;}
+    .tag-pend{background:rgba(244,162,97,0.15);color:var(--amarillo);}
+    .tag-res{background:rgba(82,183,136,0.15);color:var(--verde);}
+    .inc-det{font-size:12px;color:var(--gris);line-height:1.6;}
+    .inc-foto{width:100%;border-radius:7px;margin-top:8px;max-height:140px;object-fit:cover;}
+    .btn-res{background:var(--verde);color:#0a0a0a;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-reabrir{background:rgba(244,162,97,0.15);border:1px solid rgba(244,162,97,0.35);color:var(--amarillo);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-del-inc{background:rgba(230,57,70,0.12);border:1px solid rgba(230,57,70,0.3);color:var(--rojo);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .inc-acciones{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+
+    /* ── EMPTY STATE ── */
+    .empty{text-align:center;color:var(--gris);padding:40px 20px;font-size:13px;}
+
+    /* Leaflet oscuro */
+    .leaflet-tile{filter:brightness(0.85) saturate(0.7);}
+    .leaflet-container{background:#1a2020;}
+
+    /* ══ HISTORIAL ══ */
+    #tab-historial { overflow-y:auto; flex-direction:column; display:none; }
+    #tab-historial.on { display:flex; }
+    .hist-header{padding:14px 18px;border-bottom:1px solid var(--borde);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;background:var(--bg);z-index:5;}
+    .hist-filtros{display:flex;gap:8px;flex-wrap:wrap;}
+    .hist-filtros select, .hist-filtros input{
+      background:rgba(255,255,255,0.05);border:1px solid var(--borde);border-radius:7px;
+      padding:7px 10px;font-size:12px;color:var(--blanco);outline:none;font-family:'IBM Plex Sans',sans-serif;
+    }
+    .btn-export{background:rgba(82,183,136,0.15);border:1px solid rgba(82,183,136,0.35);color:var(--verde-c,#52b788);border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-export:hover{background:rgba(82,183,136,0.25);}
+    .btn-borrar-hist{background:rgba(230,57,70,0.12);border:1px solid rgba(230,57,70,0.3);color:var(--rojo);border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;}
+    .btn-borrar-hist:hover{background:rgba(230,57,70,0.2);}
+    .btn-del-hist{background:rgba(230,57,70,0.12);border:1px solid rgba(230,57,70,0.3);color:var(--rojo);border-radius:6px;width:30px;height:30px;font-size:14px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .btn-del-hist:hover{background:rgba(230,57,70,0.25);}
+
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;padding:14px 18px;}
+    .stat-card{background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:10px;padding:14px;}
+    .stat-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gris);font-weight:600;margin-bottom:6px;}
+    .stat-valor{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px;color:var(--purpura-c);line-height:1;}
+    .stat-sub{font-size:11px;color:var(--gris);margin-top:4px;}
+    .stat-card.verde .stat-valor{color:#52b788;}
+    .stat-card.amarillo .stat-valor{color:#f4a261;}
+    .stat-card.rojo .stat-valor{color:#e63946;}
+
+    .graficas-area{padding:0 18px 14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .grafica-card{background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:10px;padding:12px;}
+    .grafica-tit{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gris);font-weight:600;margin-bottom:10px;}
+    .barra-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;}
+    .barra-nom{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .barra-fondo{flex:2;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+    .barra-rell{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:4px;transition:width 0.4s;}
+    .barra-val{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--purpura-c);letter-spacing:1px;min-width:40px;text-align:right;}
+
+    .hist-lista{padding:0 18px 20px;}
+    .hist-item{background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center;}
+    .hist-fecha{font-size:11px;color:var(--gris);line-height:1.3;}
+    .hist-fecha b{color:var(--blanco);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;}
+    .hist-datos{min-width:0;}
+    .hist-nom{font-size:13px;font-weight:500;}
+    .hist-meta{font-size:11px;color:var(--gris);margin-top:2px;}
+    .hist-prog{text-align:right;}
+    .hist-prog-bar{width:90px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-top:3px;}
+    .hist-prog-rell{height:100%;background:#52b788;border-radius:3px;}
+    .hist-estado{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:10px;font-weight:600;white-space:nowrap;}
+    .estado-completado{background:rgba(82,183,136,0.15);color:#52b788;}
+    .estado-interrumpido{background:rgba(244,162,97,0.15);color:#f4a261;}
+    .estado-encurso{background:rgba(66,133,244,0.15);color:#4285f4;}
+
+    @media (max-width:900px){
+      .graficas-area{grid-template-columns:1fr;}
+      .hist-item{grid-template-columns:1fr;gap:6px;}
+      .hist-prog{text-align:left;}
+    }
+
+    /* ══ USUARIOS ══ */
+    .usuarios-lista{padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+    .usr-card{background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;}
+    .usr-card:hover{background:rgba(255,255,255,0.05);}
+    .usr-card.inactivo{opacity:0.5;}
+    .usr-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;flex-shrink:0;letter-spacing:1px;}
+    .usr-av-admin{background:#7c3aed;}
+    .usr-av-inspector{background:#f4a261;color:#0a0a0a;}
+    .usr-av-conductor{background:#52b788;color:#0a0a0a;}
+    .usr-info{flex:1;min-width:0;}
+    .usr-nombre{font-size:14px;font-weight:500;}
+    .usr-email{font-size:11px;color:var(--gris);margin-top:2px;}
+    .usr-meta{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--gris);margin-top:3px;}
+    .usr-rol-badge{font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:8px;font-weight:600;}
+    .rol-b-admin{background:rgba(124,58,237,0.15);color:#a78bfa;}
+    .rol-b-inspector{background:rgba(244,162,97,0.15);color:#f4a261;}
+    .rol-b-conductor{background:rgba(82,183,136,0.15);color:#52b788;}
+    .usr-activo-dot{width:8px;height:8px;border-radius:50%;background:#52b788;flex-shrink:0;}
+    .usr-inactivo-dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0;}
+
+    /* Ajustes */
+    .ajustes-scroll{overflow-y:auto;padding:0 20px 20px;}
+    .ajustes-seccion{background:rgba(255,255,255,0.02);border:1px solid var(--borde);border-radius:12px;padding:16px;margin-bottom:14px;}
+    .ajustes-seccion .campo{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+    .ajustes-seccion .campo:last-child{margin-bottom:0;}
+    .ajustes-seccion .campo label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);font-weight:500;}
+    .ajustes-seccion .campo input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--blanco);font-family:'IBM Plex Sans',sans-serif;outline:none;}
+    .ajustes-seccion .campo input:focus{border-color:var(--purpura-c);}
+    .ajustes-seccion .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    @media (max-width:680px){
+      .ajustes-seccion .row2{grid-template-columns:1fr;}
+    }
+    .aj-tit{font-size:13px;font-weight:600;color:var(--purpura-c);margin-bottom:12px;letter-spacing:1px;}
+    .aj-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--blanco);cursor:pointer;padding:8px 0;}
+    .aj-check input[type="checkbox"]{width:16px;height:16px;cursor:pointer;}
+
+    @keyframes destelloInc {
+      0%, 100% { color: var(--gris); transform: scale(1); }
+      50% { color: var(--am); transform: scale(1.1); }
+    }
+
+    /* ══ MODALES (faltaban) ══ */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;overflow-y:auto;}
+    .modal-bg.on{display:flex;}
+    .modal-box{background:#121212;border:1px solid var(--borde);border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:modalIn 0.2s ease;}
+    @keyframes modalIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .m-tit{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;margin-bottom:6px;}
+    .m-sub{font-size:13px;color:var(--gris);margin-bottom:18px;line-height:1.55;}
+    .m-acc{display:flex;flex-direction:column;gap:8px;}
+    .mbtn{width:100%;border:none;border-radius:10px;padding:13px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;}
+    .mbtn-am{background:var(--am);color:#0a0a0a;}
+    .mbtn-rd{background:var(--rojo);color:white;}
+    .mbtn-can{background:rgba(255,255,255,0.05);color:var(--gris);border:1px solid var(--borde) !important;}
+    .mbtn:hover{opacity:0.9;}
+    .mbtn-ico{font-size:18px;}
+
+    /* ══ ASISTENTE NUEVO USUARIO ══ */
+    .paso-asis { display: none; }
+    .paso-asis.paso-on { display: block; animation: fadeAsis 0.3s ease; }
+    @keyframes fadeAsis { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+    .paso-num { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--purpura-c); font-weight: 600; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--borde); }
+    .campo-asis { margin-bottom: 14px; }
+    .campo-asis label { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gris); margin-bottom: 6px; font-weight: 500; }
+    .campo-asis input, .campo-asis select { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--borde); border-radius: 10px; padding: 11px 13px; font-size: 14px; color: var(--blanco); font-family: inherit; outline: none; }
+    .campo-asis input:focus, .campo-asis select:focus { border-color: var(--purpura-c); }
+    .ayuda-asis { font-size: 11px; color: var(--gris); margin-top: 5px; line-height: 1.5; }
+    code { font-family: 'Courier New', monospace; }
+    .usr-card{background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;}
+    .usr-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;flex-shrink:0;}
+    .usr-avatar.conductor{background:rgba(82,183,136,0.2);color:var(--vc);}
+    .usr-avatar.inspector{background:rgba(244,162,97,0.2);color:var(--am);}
+    .usr-avatar.administrador{background:rgba(124,58,237,0.25);color:var(--purpura-c);}
+    .usr-info{flex:1;min-width:0;}
+    .usr-nombre{font-size:14px;font-weight:600;}
+    .usr-email{font-size:12px;color:var(--gris);margin-top:1px;}
+    .usr-rol-badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block;margin-top:4px;}
+    .rol-conductor{background:rgba(82,183,136,0.15);color:var(--vc);}
+    .rol-inspector{background:rgba(244,162,97,0.15);color:var(--am);}
+    .rol-administrador{background:rgba(124,58,237,0.2);color:var(--purpura-c);}
+    .usr-acciones{display:flex;gap:6px;flex-shrink:0;}
+    .usr-inactivo{opacity:0.45;}
+    .usr-inactivo::after{content:' (INACTIVO)';font-size:10px;color:var(--rojo);margin-left:6px;}
+    @media (max-width:680px){
+      .usr-card{flex-wrap:wrap;}
+      .usr-info{flex:1 1 100%;}
+    }
+
+    /* ══ AJUSTES ══ */
+    #tab-ajustes { overflow-y:auto; flex-direction:column; display:none; }
+    #tab-ajustes.on { display:flex; }
+    .ajustes-scroll{flex:1;overflow-y:auto;}
+    .ajustes-seccion{padding:16px 20px;border-bottom:1px solid var(--borde);}
+    .aj-tit{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--purpura-c);margin-bottom:12px;}
+    .aj-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#bbb;cursor:pointer;padding:8px 0;}
+    .aj-check input{width:16px;height:16px;cursor:pointer;}
+
+    /* Campana de notificaciones */
+    .campana{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);cursor:pointer;font-size:16px;margin-right:6px;}
+    .campana.alerta{background:rgba(244,162,97,0.2);border-color:rgba(244,162,97,0.5);animation:campana-ring 0.6s ease-in-out 3;}
+    .campana-badge{position:absolute;top:-4px;right:-4px;background:var(--rojo);color:white;font-size:10px;font-weight:700;border-radius:10px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);box-shadow:0 0 0 0 rgba(230,57,70,0.7);animation:pulsoBadge 2s infinite;}
+    .campana.campana-activa{animation:meneoCampana 0.5s ease-in-out 3;}
+    @keyframes pulsoBadge{0%{box-shadow:0 0 0 0 rgba(230,57,70,0.7)}70%{box-shadow:0 0 0 8px rgba(230,57,70,0)}100%{box-shadow:0 0 0 0 rgba(230,57,70,0)}}
+    @keyframes meneoCampana{0%,100%{transform:rotate(0)}25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+    @keyframes campana-ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-15deg)}40%{transform:rotate(15deg)}60%{transform:rotate(-10deg)}80%{transform:rotate(10deg)}}
+
+    /* ══ RESPONSIVE ══ */
+    /* Pantallas medianas (< 1100px): sidebar más estrecha */
+    @media (max-width: 1100px) {
+      .sidebar { width: 240px; }
+      .ed-campos { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Pantallas pequeñas / pantalla dividida (< 850px) */
+    @media (max-width: 850px) {
+      .sidebar { width: 200px; }
+      .ed-campos { grid-template-columns: 1fr; }
+      .popup-mapa { width: 180px; padding: 10px; }
+      .popup-mapa input { font-size: 12px; padding: 6px 8px; }
+      .topbar-titulo { font-size: 18px; letter-spacing: 2px; }
+      .topbar-nom { display: none; }
+    }
+
+    /* Móvil (< 680px): sidebar se oculta detrás de un botón hamburguesa */
+    @media (max-width: 680px) {
+      .sidebar {
+        position: fixed; top: 90px; left: 0; bottom: 0;
+        width: 280px; max-width: 85vw; z-index: 1500;
+        transform: translateX(-100%); transition: transform 0.3s;
+        background: #0c0c0c;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        display: flex !important; flex-direction: column;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+      }
+      .sidebar.abierta { transform: translateX(0); }
+      .btn-hamb { display: flex !important; }
+      .contenido { width: 100%; }
+      #mapa-ed { height: 260px; }
+      .panel-ed { max-height: 340px; }
+      .ed-campos { grid-template-columns: 1fr; padding: 10px 12px; gap: 6px; }
+      .campo-ed input { font-size: 13px; padding: 9px 11px; }
+      .popup-mapa { width: 90vw; max-width: 260px; }
+      .pt-row { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+      .pt-num { width: 60px; }
+      .pt-nota { width: 100%; }
+      .pt-coords { font-size: 9px; }
+      .sidebar-lista { flex:1; overflow-y:auto; }
+
+      /* Cuando sidebar abierta, ocultar controles de Leaflet y hint */
+      body.sidebar-open .leaflet-top,
+      body.sidebar-open .leaflet-bottom,
+      body.sidebar-open .mapa-hint {
+        display: none !important;
+      }
+    }
+
+    /* Botón hamburguesa - oculto por defecto, visible en móvil */
+    .btn-hamb {
+      display: none;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      color: var(--blanco); border-radius: 8px; padding: 6px 11px;
+      font-size: 18px; cursor: pointer; align-items: center; justify-content: center;
+      margin-right: 8px;
+    }
+
+    /* Overlay para cerrar sidebar en móvil */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 1400;
+    }
+    .sidebar-overlay.on { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="btn-hamb" onclick="toggleSidebar()">☰</button>
+  <div class="logo">RECORRIDOS</div>
+  <span class="badge">Admin</span>
+  <span class="topbar-nom" id="admin-nom"></span>
+  <div class="spacer"></div>
+  <div class="campana" id="campana" onclick="cambiarTab('incidencias')" title="Notificaciones">
+    🔔
+    <span class="campana-badge" id="campana-badge" style="display:none">0</span>
+  </div>
+  <button class="btn-xs" onclick="abrirAjustesUsuario()" title="Cambiar mi contraseña">⚙</button>
+  <button class="btn-xs" onclick="cerrarSesion()">Salir</button>
+</div>
+
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="tabs">
+  <div class="tab on"  onclick="cambiarTab('recorridos')">🗺 Recorridos</div>
+  <div class="tab"     onclick="cambiarTab('mapa')">📍 En vivo</div>
+  <div class="tab"     onclick="cambiarTab('incidencias')" id="tab-inc-btn">⚠ Incidencias</div>
+  <div class="tab"     onclick="cambiarTab('historial')">📊 Historial</div>
+  <div class="tab"     onclick="cambiarTab('usuarios')">👥 Usuarios</div>
+  <div class="tab"     onclick="cambiarTab('ajustes')">⚙ Ajustes</div>
+</div>
+
+<div class="main">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-tit">RECORRIDOS</div>
+      <button class="btn-nuevo" onclick="nuevoRecorrido()">+ Nuevo</button>
+    </div>
+    <div class="sidebar-lista" id="sidebar-lista">
+      <div class="empty">Cargando...</div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: RECORRIDOS ── -->
+  <div class="contenido tab-cont on" id="tab-recorridos">
+    <div id="mapa-ed"></div>
+    <div class="mapa-hint" id="mapa-hint">Haz clic en el mapa para añadir un punto de recorrido</div>
+
+    <!-- Popup flotante al clicar en el mapa -->
+    <div class="popup-mapa" id="popup-mapa">
+      <div class="popup-tit">Nuevo punto</div>
+      <div class="popup-coord" id="popup-coord"></div>
+      <input type="text" id="pop-num"   placeholder="Nº contenedor (ej: C-01)">
+      <input type="text" id="pop-calle" placeholder="Calle, número">
+      <input type="text" id="pop-nota"  placeholder="Nota (marcha atrás, etc.)">
+      <div class="popup-btns">
+        <button class="popup-ok"   onclick="confirmarPunto()">Añadir</button>
+        <button class="popup-skip" onclick="cerrarPopup()">✕</button>
+      </div>
+    </div>
+
+    <!-- Panel inferior con campos generales + lista compacta -->
+    <div class="panel-ed" id="panel-ed">
+      <div class="panel-ed-head">
+        <div class="pan-tit" id="pan-tit">NUEVO RECORRIDO</div>
+        <div class="pan-btns">
+          <button class="btn-guardar-rec" onclick="guardarRecorrido()">💾 Guardar</button>
+          <button class="btn-canc-rec"    onclick="cancelarEdicion()">Cancelar</button>
+        </div>
+      </div>
+      <div class="ed-campos">
+        <div class="campo-ed"><label>Número</label><input type="number" id="ed-num" placeholder="1" min="1" max="11"></div>
+        <div class="campo-ed"><label>Nombre del recorrido</label><input type="text" id="ed-nombre" placeholder="Zona Norte"></div>
+        <div class="campo-ed"><label>Zona / descripción</label><input type="text" id="ed-zona" placeholder="Barrio San Miguel"></div>
+        <div class="campo-ed"><label>Teléfono superior</label><input type="tel" id="ed-tel" placeholder="956000000"></div>
+        <div class="campo-ed"><label>Vertedero (lat,lng)</label><input type="text" id="ed-vert" placeholder="36.12,-5.43"></div>
+        <div class="campo-ed" style="display:flex;align-items:flex-end;"><button class="btn-nuevo" onclick="addPuntoManual()" style="width:100%">+ Punto manual</button></div>
+      </div>
+      <!-- Lista compacta de puntos -->
+      <div class="puntos-lista-compact" id="puntos-lista"></div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: MAPA EN VIVO ── -->
+  <div class="contenido tab-cont" id="tab-mapa">
+    <div id="mapa-live-wrap"><div id="mapa-live"></div></div>
+    <div style="padding:8px 14px;background:var(--bg2);border-top:1px solid var(--borde);display:flex;gap:14px;">
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--verde);border-radius:50%;display:inline-block"></span>En ruta</span>
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--amarillo);border-radius:50%;display:inline-block"></span>Vertedero</span>
+      <span style="font-size:11px;color:var(--gris);display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;background:var(--rojo);border-radius:50%;display:inline-block"></span>Emergencia</span>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: INCIDENCIAS ── -->
+  <div class="contenido tab-cont" id="tab-incidencias">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--borde);display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px">INCIDENCIAS</span>
+      <span style="font-size:12px;color:var(--gris)" id="cnt-inc">—</span>
+    </div>
+    <div class="inc-lista" id="inc-lista"><div class="empty">Cargando...</div></div>
+  </div>
+
+  <!-- ── CONTENIDO: HISTORIAL Y ESTADÍSTICAS ── -->
+  <div class="contenido tab-cont" id="tab-historial">
+    <div class="hist-header">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px">HISTORIAL Y ESTADÍSTICAS</div>
+      <div class="hist-filtros">
+        <select id="filtro-periodo" onchange="aplicarFiltroHistorial()">
+          <option value="hoy">Hoy</option>
+          <option value="ayer">Ayer</option>
+          <option value="semana" selected>Esta semana</option>
+          <option value="mes">Este mes</option>
+          <option value="todo">Todo</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+        <input type="date" id="filtro-desde" onchange="aplicarFiltroHistorial()" style="display:none">
+        <input type="date" id="filtro-hasta" onchange="aplicarFiltroHistorial()" style="display:none">
+        <select id="filtro-conductor" onchange="aplicarFiltroHistorial()">
+          <option value="">Todos los conductores</option>
+        </select>
+        <button class="btn-export" onclick="exportarHistorial()">⬇ Exportar</button>
+        <button class="btn-borrar-hist" onclick="borrarHistorialFiltrado()">🗑 Borrar filtrados</button>
+      </div>
+    </div>
+
+    <!-- Tarjetas de estadísticas -->
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- Gráficas sencillas -->
+    <div class="graficas-area" id="graficas-area"></div>
+
+    <!-- Lista de recorridos -->
+    <div class="hist-lista" id="hist-lista">
+      <div class="empty">Cargando historial...</div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: USUARIOS ── -->
+  <div class="contenido tab-cont" id="tab-usuarios">
+    <div class="sec-header">
+      <div class="sec-titulo">GESTIÓN DE USUARIOS</div>
+      <button class="btn-nuevo" onclick="abrirAsistenteUsuario()">+ Nuevo usuario</button>
+    </div>
+    <div class="usuarios-lista" id="usuarios-lista">
+      <div class="empty">Cargando usuarios...</div>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO: AJUSTES ── -->
+  <div class="contenido tab-cont" id="tab-ajustes">
+    <div class="ajustes-scroll">
+      <div class="sec-header">
+        <div class="sec-titulo">AJUSTES GENERALES</div>
+        <button class="btn-nuevo" onclick="guardarAjustes()">💾 Guardar</button>
+      </div>
+
+      <div class="ajustes-seccion">
+        <div class="aj-tit">🏢 Organización</div>
+        <div class="campo"><label>Nombre del municipio / empresa</label><input type="text" id="aj-municipio" placeholder="Ej: Ayuntamiento de Jerez"></div>
+      </div>
+
+      <div class="ajustes-seccion">
+        <div class="aj-tit">📞 Teléfonos de contacto</div>
+        <div class="row2">
+          <div class="campo"><label>Emergencias</label><input type="tel" id="aj-tel-emergencia" value="112" placeholder="112"></div>
+          <div class="campo"><label>Taller / Avería</label><input type="tel" id="aj-tel-taller" placeholder="956000000"></div>
+        </div>
+        <div class="row2">
+          <div class="campo"><label>Supervisor de turno</label><input type="tel" id="aj-tel-supervisor" placeholder="956000000"></div>
+          <div class="campo"><label>Centro de control</label><input type="tel" id="aj-tel-central" placeholder="956000000"></div>
+        </div>
+      </div>
+
+      <div class="ajustes-seccion">
+        <div class="aj-tit">🗑 Vertederos disponibles</div>
+        <div class="campo"><label>Vertedero principal (lat, lng)</label><input type="text" id="aj-vert1" placeholder="36.6849, -6.1259"></div>
+        <div class="row2">
+          <div class="campo"><label>Vertedero alternativo 1</label><input type="text" id="aj-vert2" placeholder="36.6849, -6.1259"></div>
+          <div class="campo"><label>Vertedero alternativo 2</label><input type="text" id="aj-vert3" placeholder="36.6849, -6.1259"></div>
+        </div>
+      </div>
+
+      <div class="ajustes-seccion">
+        <div class="aj-tit">🚚 Configuración del camión (por defecto)</div>
+        <div class="row2">
+          <div class="campo"><label>Peso máximo (toneladas)</label><input type="number" id="aj-peso" value="18" step="0.5"></div>
+          <div class="campo"><label>Altura (metros)</label><input type="number" id="aj-altura" value="4" step="0.1"></div>
+        </div>
+        <div class="row2">
+          <div class="campo"><label>Ancho (metros)</label><input type="number" id="aj-ancho" value="2.55" step="0.05"></div>
+          <div class="campo"><label>Largo (metros)</label><input type="number" id="aj-largo" value="10" step="0.5"></div>
+        </div>
+      </div>
+
+      <div class="ajustes-seccion">
+        <div class="aj-tit">🔔 Notificaciones</div>
+        <div class="row2">
+          <label class="aj-check"><input type="checkbox" id="aj-sonido-inc" checked> Sonido al entrar nueva incidencia</label>
+          <label class="aj-check"><input type="checkbox" id="aj-sonido-emerg" checked> Sonido de alarma en emergencias</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── MODAL EDITOR DE USUARIO ── -->
+<div class="modal-bg" id="modal-usuario">
+  <div class="modal-box" style="max-width:480px;margin:auto;">
+    <div class="m-tit" style="color:var(--purpura-c)" id="usr-titulo">NUEVO USUARIO</div>
+    <div class="m-sub">Rellena los datos del usuario. La contraseña se establece al crear la cuenta en Firebase Authentication.</div>
+
+    <div class="campo"><label>Usuario (sin @)</label><input type="text" id="usr-nombre-usuario" placeholder="Ej: conductor5"></div>
+    <div class="campo"><label>Nombre completo</label><input type="text" id="usr-nombre" placeholder="Ej: María García"></div>
+    <div class="campo"><label>Rol</label>
+      <select id="usr-rol">
+        <option value="conductor">Conductor</option>
+        <option value="inspector">Inspector</option>
+        <option value="administrador">Administrador</option>
+      </select>
+    </div>
+    <div class="campo"><label>Teléfono de contacto (opcional)</label><input type="tel" id="usr-telefono" placeholder="600000000"></div>
+    <label class="aj-check" style="margin:10px 0"><input type="checkbox" id="usr-activo" checked> Usuario activo (puede iniciar sesión)</label>
+    <label class="aj-check" style="margin:10px 0"><input type="checkbox" id="usr-req-cambio"> Forzar cambio de contraseña en el próximo inicio de sesión</label>
+
+    <div id="usr-instruccion" style="background:rgba(244,162,97,0.1);border:1px solid rgba(244,162,97,0.3);border-radius:10px;padding:12px;font-size:12px;color:var(--am);line-height:1.5;margin-bottom:14px;display:none">
+      <strong>ℹ️ Importante:</strong> Este formulario guarda el perfil en la base de datos. Para crear la cuenta de acceso completa, debes:
+      <br>1. Ir a <a href="https://console.firebase.google.com" target="_blank" style="color:var(--vc)">Firebase Console → Authentication</a>
+      <br>2. Pulsar "Añadir usuario"
+      <br>3. Usar el email: <code id="usr-email-mostrar" style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px"></code>
+      <br>4. Copiar el UID generado y pegarlo abajo
+    </div>
+
+    <div class="campo" id="usr-campo-uid"><label>UID del usuario (de Firebase Auth)</label><input type="text" id="usr-uid" placeholder="Pega aquí el UID de Firebase"></div>
+
+    <div class="m-acc" style="margin-top:16px">
+      <button class="mbtn" style="background:var(--purpura);color:white" onclick="guardarUsuario()">💾 Guardar usuario</button>
+      <button class="mbtn" id="btn-reset-clave-usr" onclick="resetearClaveDesdeEditor()" style="background:rgba(244,162,97,0.15);border:1px solid rgba(244,162,97,0.35)!important;color:var(--am);display:none">🔓 Resetear contraseña</button>
+      <button class="mbtn" id="btn-borrar-usr" onclick="borrarUsuario()" style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.35)!important;color:var(--rojo);display:none">🗑 Borrar usuario</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ASISTENTE NUEVO USUARIO -->
+<div class="modal-bg" id="modal-asistente">
+  <div class="modal-box" style="max-width:600px;margin:auto;max-height:90vh;overflow-y:auto;">
+    <div class="m-tit" style="color:var(--purpura-c)">✨ ASISTENTE: NUEVO USUARIO</div>
+    <div class="m-sub">Sigue los pasos para crear el usuario completo en 2 minutos.</div>
+
+    <!-- Paso 1 -->
+    <div class="paso-asis paso-on" id="paso-1">
+      <div class="paso-num">PASO 1 — Datos del nuevo usuario</div>
+
+      <div class="campo-asis">
+        <label>Nombre completo del usuario *</label>
+        <input type="text" id="asis-nombre" placeholder="Ej: Pedro García López">
+      </div>
+
+      <div class="campo-asis">
+        <label>Email * (recomendado: usar email real para recuperar contraseña)</label>
+        <input type="email" id="asis-email" placeholder="pedro.garcia@gmail.com">
+        <div class="ayuda-asis" id="asis-email-ayuda">Si pones un email real, el usuario podrá recuperar su contraseña por sí mismo.</div>
+      </div>
+
+      <div class="campo-asis">
+        <label>Rol *</label>
+        <select id="asis-rol">
+          <option value="conductor">Conductor</option>
+          <option value="inspector">Inspector</option>
+          <option value="administrador">Administrador</option>
+        </select>
+      </div>
+
+      <div class="campo-asis">
+        <label>Teléfono (opcional)</label>
+        <input type="tel" id="asis-telefono" placeholder="666123456">
+      </div>
+
+      <div class="campo-asis">
+        <label>Contraseña temporal *</label>
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input type="text" id="asis-clave-temp" placeholder="Bienvenido2026" value="Bienvenido2026" style="flex:1;min-width:0">
+          <button type="button" style="background:rgba(124,58,237,0.15);color:var(--purpura-c);border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:0 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap" onclick="generarClave()">🎲 Generar</button>
+        </div>
+        <div class="ayuda-asis">El usuario la cambiará por una propia en su primer login.</div>
+      </div>
+
+      <div class="m-acc" style="margin-top:14px">
+        <button class="mbtn" style="background:#4285f4;color:white" onclick="paso1Siguiente()">Siguiente: Crear cuenta en Firebase →</button>
+        <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Paso 2 -->
+    <div class="paso-asis" id="paso-2">
+      <div class="paso-num">PASO 2 — Crear cuenta en Firebase Console</div>
+
+      <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.7;color:var(--blanco)">
+        <strong>1.</strong> Pulsa el botón azul abajo "Abrir Firebase Console"<br>
+        <strong>2.</strong> Pulsa el botón <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px">+ Add user</code> arriba a la derecha<br>
+        <strong>3.</strong> Copia y pega estos datos:<br>
+        <div style="background:rgba(0,0,0,0.4);border-radius:6px;padding:10px;margin:8px 0">
+          <div>Email: <code id="asis-email-mostrar" style="color:var(--vc)"></code> <button onclick="copiar('asis-email-mostrar', this)" style="background:none;border:none;color:var(--purpura-c);cursor:pointer;font-size:11px">📋 Copiar</button></div>
+          <div style="margin-top:6px">Password: <code id="asis-clave-mostrar" style="color:var(--vc)"></code> <button onclick="copiar('asis-clave-mostrar', this)" style="background:none;border:none;color:var(--purpura-c);cursor:pointer;font-size:11px">📋 Copiar</button></div>
+        </div>
+        <strong>4.</strong> Pulsa <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px">Add user</code> en Firebase<br>
+        <strong>5.</strong> Copia el <strong>UID</strong> que aparece y pégalo abajo
+      </div>
+
+      <button class="mbtn" style="background:#4285f4;color:white;margin-bottom:12px" onclick="abrirFirebaseAuth()">🔗 Abrir Firebase Console</button>
+
+      <div class="campo-asis">
+        <label>UID generado por Firebase *</label>
+        <input type="text" id="asis-uid" placeholder="Pega aquí el UID copiado de Firebase">
+      </div>
+
+      <div class="m-acc">
+        <button class="mbtn" style="background:rgba(255,255,255,0.06);color:var(--gris);border:1px solid rgba(255,255,255,0.12)" onclick="paso2Anterior()">← Volver</button>
+        <button class="mbtn" style="background:var(--verde);color:var(--blanco)" onclick="paso2Finalizar()">Finalizar y guardar →</button>
+      </div>
+    </div>
+
+    <!-- Paso 3 - Confirmación con PDF -->
+    <div class="paso-asis" id="paso-3">
+      <div class="paso-num" style="color:var(--vc)">✓ USUARIO CREADO CORRECTAMENTE</div>
+
+      <div style="background:rgba(82,183,136,0.1);border:1px solid rgba(82,183,136,0.3);border-radius:10px;padding:16px;margin-bottom:14px;color:var(--blanco);line-height:1.7;font-size:13px">
+        El usuario ha sido creado y vinculado en la app. Ahora puedes:
+        <ul style="margin:10px 0 0 20px;padding:0">
+          <li>Descargar el <strong>PDF de bienvenida</strong> con sus credenciales</li>
+          <li>Enviarlo al usuario por <strong>email, WhatsApp o impresoresa</strong></li>
+          <li>El usuario al primer login deberá cambiar la contraseña</li>
+        </ul>
+      </div>
+
+      <div class="m-acc">
+        <button class="mbtn" style="background:#d97706;color:white;font-weight:700" onclick="descargarPDFBienvenida()">📄 Descargar PDF de bienvenida</button>
+        <button class="mbtn" style="background:rgba(82,183,136,0.15);color:var(--vc);border:1px solid rgba(82,183,136,0.35)" onclick="abrirAsistenteUsuario()">+ Crear otro usuario</button>
+        <button class="mbtn mbtn-can" onclick="cerrarModales()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIO PROPIA CONTRASEÑA -->
+<div class="modal-bg" id="modal-clave">
+  <div class="modal-box" style="max-width:480px;margin:auto;">
+    <div class="m-tit" style="color:var(--vc)">🔐 CAMBIAR MI CONTRASEÑA</div>
+    <div class="m-sub">Introduce tu contraseña actual y la nueva que quieras usar.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <div>
+        <label style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1.5px;display:block;margin-bottom:5px">Contraseña actual</label>
+        <input type="password" id="clave-actual" placeholder="Tu contraseña actual" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--blanco);font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1.5px;display:block;margin-bottom:5px">Nueva contraseña (mín. 6 caracteres)</label>
+        <input type="password" id="clave-nueva" placeholder="Nueva contraseña" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--blanco);font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1.5px;display:block;margin-bottom:5px">Repetir nueva contraseña</label>
+        <input type="password" id="clave-repetir" placeholder="Repite la nueva contraseña" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--borde);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--blanco);font-family:inherit;outline:none">
+      </div>
+    </div>
+    <div class="m-acc">
+      <button class="mbtn" style="background:var(--verde);color:var(--blanco)" onclick="ejecutarCambioClave()">💾 Guardar nueva contraseña</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GUÍA RESETEO CONTRASEÑA DE OTRO USUARIO -->
+<div class="modal-bg" id="modal-reset-ajeno">
+  <div class="modal-box" style="max-width:520px;margin:auto;">
+    <div class="m-tit" style="color:var(--am)">🔓 RESETEAR CONTRASEÑA</div>
+    <div class="m-sub" id="reset-sub">Pasos para resetear la contraseña:</div>
+    <div style="background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.25);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;margin-bottom:14px;color:var(--blanco)">
+      <strong>1.</strong> Haz clic en el botón azul "Abrir Firebase Console" abajo<br>
+      <strong>2.</strong> Busca al usuario: <code id="reset-email" style="background:rgba(0,0,0,0.4);padding:3px 7px;border-radius:4px;color:var(--vc)"></code><br>
+      <strong>3.</strong> Haz clic en los tres puntos <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px">⋮</code> del usuario<br>
+      <strong>4.</strong> Selecciona <strong>"Restablecer contraseña"</strong> o <strong>"Editar usuario"</strong><br>
+      <strong>5.</strong> Establece la contraseña nueva temporal y comunícasela<br>
+      <strong>6.</strong> El usuario podrá cambiarla desde su propia app (botón ⚙)
+    </div>
+    <div class="m-acc">
+      <button class="mbtn" style="background:#4285f4;color:white" onclick="abrirFirebaseAuth()">🔗 Abrir Firebase Console</button>
+      <button class="mbtn mbtn-can" onclick="cerrarModales()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyA9PzR5xemmCl4t1ae0GQsSIjSs-bY_Pco",authDomain:"recorridos-app-f362a.firebaseapp.com",projectId:"recorridos-app-f362a",storageBucket:"recorridos-app-f362a.firebasestorage.app",messagingSenderId:"375824896184",appId:"1:375824896184:web:9d1bcbe4df81e651f9644d"};
+const app=initializeApp(FB), auth=getAuth(app), db=getFirestore(app);
+
+let usuario=null, editandoId=null;
+let mapaEd=null, mapaLive=null;
+let marcadoresEd=[], polyEd=null;
+let marcadoresLive={};
+let puntoClickTmp=null; // coords del último clic en el mapa
+let incDocs=[];
+
+// ── AUTH ──
+onAuthStateChanged(auth, async user=>{
+  if(!user){window.location.href='../index.html';return;}
+  const s=await getDoc(doc(db,'usuarios',user.uid));
+  if(!s.exists()||s.data().rol!=='administrador'){window.location.href='../index.html';return;}
+  usuario={uid:user.uid,...s.data()};
+  document.getElementById('admin-nom').textContent=usuario.nombre||'';
+  cargarRecorridos();
+  escucharIncidencias();
+  iniciarMapaEditor();
+});
+
+// ── TABS ──
+window.cambiarTab=function(tab){
+  const ids=['recorridos','mapa','incidencias','historial','usuarios','ajustes'];
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('on', ids[i]===tab);
+  });
+  document.querySelectorAll('.tab-cont').forEach(c=>c.classList.remove('on'));
+  document.getElementById(`tab-${tab}`).classList.add('on');
+
+  // Gestión de sidebar — solo en pestaña recorridos
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if (tab === 'recorridos') {
+    sb.style.display = 'flex';
+    sb.classList.remove('abierta');
+  } else {
+    sb.style.display = 'none';
+    sb.classList.remove('abierta');
+    ov.classList.remove('on');
+  }
+
+  if(tab==='mapa'){iniciarMapaLive();}
+  if(tab==='incidencias'){renderIncidencias();marcarIncidenciasVistas();}
+  if(tab==='historial'){cargarHistorial();}
+  if(tab==='usuarios'){cargarUsuariosAdmin();}
+  if(tab==='ajustes'){cargarAjustes();}
+  setTimeout(()=>{if(mapaEd)mapaEd.invalidateSize();if(mapaLive)mapaLive.invalidateSize();},100);
+};
+
+// ── MAPA EDITOR ──
+function iniciarMapaEditor(){
+  if(mapaEd)return;
+  mapaEd=L.map('mapa-ed',{zoomControl:true}).setView([36.6849,-6.1259],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(mapaEd);
+  mapaEd.on('click',e=>onMapaClick(e));
+}
+
+function onMapaClick(e){
+  puntoClickTmp={lat:e.latlng.lat,lng:e.latlng.lng};
+  const punto=mapaEd.latLngToContainerPoint(e.latlng);
+  const popup=document.getElementById('popup-mapa');
+  const mapa=document.getElementById('mapa-ed');
+  const rect=mapa.getBoundingClientRect();
+  const popupW = window.innerWidth < 680 ? Math.min(window.innerWidth - 40, 260) : 220;
+  const popupH = 240;
+  let x=punto.x+rect.left-popupW/2;
+  let y=punto.y+rect.top-popupH-20;
+  // Si no cabe arriba, ponerlo abajo del clic
+  if(y < 10) y = punto.y + rect.top + 20;
+  // Asegurar que está dentro de la ventana
+  x=Math.max(10,Math.min(x, window.innerWidth - popupW - 10));
+  y=Math.max(10,Math.min(y, window.innerHeight - popupH - 10));
+  popup.style.width = popupW + 'px';
+  popup.style.left=x+'px';
+  popup.style.top=y+'px';
+  document.getElementById('popup-coord').textContent=`📍 ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  document.getElementById('pop-num').value='';
+  document.getElementById('pop-calle').value='';
+  document.getElementById('pop-nota').value='';
+  popup.classList.add('on');
+  setTimeout(()=>document.getElementById('pop-num').focus(), 100);
+}
+
+window.cerrarPopup=function(){
+  document.getElementById('popup-mapa').classList.remove('on');
+  puntoClickTmp=null;
+};
+
+window.confirmarPunto=function(){
+  if(!puntoClickTmp)return;
+  const num=document.getElementById('pop-num').value.trim();
+  const calle=document.getElementById('pop-calle').value.trim();
+  const nota=document.getElementById('pop-nota').value.trim();
+  addPuntoALista({numero:num,calle,nota,coords:{lat:puntoClickTmp.lat,lng:puntoClickTmp.lng}});
+  cerrarPopup();
+  refrescarLineasMapa();
+};
+
+// También con Enter
+document.getElementById('pop-nota').addEventListener('keydown',e=>{if(e.key==='Enter')window.confirmarPunto();});
+
+function addPuntoALista(datos={}){
+  const lista=document.getElementById('puntos-lista');
+  const idx=lista.children.length+1;
+  const row=document.createElement('div');
+  row.className='pt-row';
+  row.dataset.lat=datos.coords?.lat||'';
+  row.dataset.lng=datos.coords?.lng||'';
+  const lat=datos.coords?.lat?datos.coords.lat.toFixed(5):'';
+  const lng=datos.coords?.lng?datos.coords.lng.toFixed(5):'';
+  row.innerHTML=`
+    <span class="pt-n">${idx}</span>
+    <input class="pt-num"   type="text" placeholder="C-01" value="${datos.numero||''}">
+    <input class="pt-calle" type="text" placeholder="Calle, número" value="${datos.calle||''}">
+    <input class="pt-nota"  type="text" placeholder="Nota especial" value="${datos.nota||''}">
+    <span class="pt-coords">${lat?`${lat},${lng}`:''}</span>
+    <button class="pt-del" onclick="quitarPunto(this)">✕</button>`;
+  lista.appendChild(row);
+  renumerarPuntos();
+}
+
+window.addPuntoManual=function(){addPuntoALista();};
+
+window.quitarPunto=function(btn){
+  btn.closest('.pt-row').remove();
+  renumerarPuntos();
+  refrescarLineasMapa();
+};
+
+function renumerarPuntos(){
+  document.querySelectorAll('#puntos-lista .pt-row').forEach((r,i)=>r.querySelector('.pt-n').textContent=i+1);
+}
+
+function refrescarLineasMapa(){
+  if(!mapaEd)return;
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  const pts=[];
+  document.querySelectorAll('#puntos-lista .pt-row').forEach((row,i)=>{
+    const lat=parseFloat(row.dataset.lat||0);
+    const lng=parseFloat(row.dataset.lng||0);
+    if(!lat||!lng)return;
+    pts.push([lat,lng]);
+    const calle=row.querySelector('.pt-calle').value||'';
+    const num=row.querySelector('.pt-num').value||'';
+    const ico=L.divIcon({
+      html:`<div style="background:${i===0?'#52b788':'#7c3aed'};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.5)">${i+1}</div>`,
+      className:'',iconAnchor:[12,12]
+    });
+    const m=L.marker([lat,lng],{icon:ico}).addTo(mapaEd).bindPopup(`<b>${num}</b><br>${calle}`);
+    marcadoresEd.push(m);
+  });
+  if(pts.length>1){
+    polyEd=L.polyline(pts,{color:'#a78bfa',weight:2.5,dashArray:'7 4'}).addTo(mapaEd);
+  }
+}
+
+// ── RECORRIDOS ──
+async function cargarRecorridos(){
+  const lista=document.getElementById('sidebar-lista');
+  try{
+    const snap=await getDocs(collection(db,'recorridos'));
+    if(snap.empty){lista.innerHTML='<div class="empty">No hay recorridos aún</div>';return;}
+    const docs=[];
+    snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(a.numero||0)-(b.numero||0));
+    lista.innerHTML='';
+    docs.forEach(r=>{
+      const div=document.createElement('div');
+      div.className='rec-item';
+      div.innerHTML=`
+        <div class="ri-num">R${r.numero||'?'}</div>
+        <div class="ri-nom">${r.nombre||'Sin nombre'}</div>
+        <div class="ri-meta">${(r.contenedores||[]).length} puntos${r.zona?` · ${r.zona}`:''}</div>
+        <div class="ri-btns">
+          <button class="ri-btn ri-ed"  onclick="editarRec('${r.id}');event.stopPropagation()">Editar</button>
+          <button class="ri-btn ri-del" onclick="borrarRec('${r.id}');event.stopPropagation()">Borrar</button>
+        </div>`;
+      lista.appendChild(div);
+    });
+  }catch(e){lista.innerHTML='<div class="empty" style="color:var(--rojo)">Error al cargar</div>';}
+}
+
+window.nuevoRecorrido=function(){
+  editandoId=null;
+  document.getElementById('pan-tit').textContent='NUEVO RECORRIDO';
+  document.getElementById('ed-num').value='';
+  document.getElementById('ed-nombre').value='';
+  document.getElementById('ed-zona').value='';
+  document.getElementById('ed-tel').value='';
+  document.getElementById('ed-vert').value='';
+  document.getElementById('puntos-lista').innerHTML='';
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  document.getElementById('mapa-hint').classList.remove('oculto');
+};
+
+window.editarRec=async function(id){
+  editandoId=id;
+  const snap=await getDoc(doc(db,'recorridos',id));
+  if(!snap.exists())return;
+  const r=snap.data();
+  document.getElementById('pan-tit').textContent='EDITAR RECORRIDO';
+  document.getElementById('ed-num').value=r.numero||'';
+  document.getElementById('ed-nombre').value=r.nombre||'';
+  document.getElementById('ed-zona').value=r.zona||'';
+  document.getElementById('ed-tel').value=r.telefonoSuperior||'';
+  const cv=r.coordsVertedero;
+  if(cv)document.getElementById('ed-vert').value=`${cv.lat},${cv.lng}`;
+  document.getElementById('puntos-lista').innerHTML='';
+  (r.contenedores||[]).forEach(c=>addPuntoALista(c));
+  setTimeout(()=>refrescarLineasMapa(),100);
+  document.getElementById('mapa-hint').classList.add('oculto');
+};
+
+window.cancelarEdicion=function(){
+  editandoId=null;
+  document.getElementById('puntos-lista').innerHTML='';
+  marcadoresEd.forEach(m=>m.remove());
+  marcadoresEd=[];
+  if(polyEd){polyEd.remove();polyEd=null;}
+  document.getElementById('mapa-hint').classList.remove('oculto');
+};
+
+window.borrarRec=async function(id){
+  if(!confirm('¿Borrar este recorrido?'))return;
+  await deleteDoc(doc(db,'recorridos',id));
+  cargarRecorridos();
+};
+
+window.guardarRecorrido=async function(){
+  const nombre=document.getElementById('ed-nombre').value.trim();
+  if(!nombre){alert('El nombre es obligatorio');return;}
+  const rows=document.querySelectorAll('#puntos-lista .pt-row');
+  const contenedores=Array.from(rows).map(r=>({
+    numero:r.querySelector('.pt-num').value.trim(),
+    calle:r.querySelector('.pt-calle').value.trim(),
+    nota:r.querySelector('.pt-nota').value.trim(),
+    coords:r.dataset.lat?{lat:parseFloat(r.dataset.lat),lng:parseFloat(r.dataset.lng)}:null
+  })).filter(c=>c.calle||c.coords);
+  const vStr=document.getElementById('ed-vert').value.trim();
+  let cv=null;
+  if(vStr){const[la,ln]=vStr.split(',').map(Number);if(!isNaN(la))cv={lat:la,lng:ln};}
+  const datos={
+    numero:parseInt(document.getElementById('ed-num').value)||0,
+    nombre,zona:document.getElementById('ed-zona').value.trim(),
+    telefonoSuperior:document.getElementById('ed-tel').value.trim(),
+    coordsVertedero:cv,contenedores,actualizadoEn:serverTimestamp()
+  };
+  const btn=document.querySelector('.btn-guardar-rec');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    if(editandoId)await updateDoc(doc(db,'recorridos',editandoId),datos);
+    else await addDoc(collection(db,'recorridos'),datos);
+    cancelarEdicion();cargarRecorridos();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='💾 Guardar';}
+};
+
+// ── MAPA EN VIVO ──
+function iniciarMapaLive(){
+  const wrap=document.getElementById('mapa-live-wrap');
+  wrap.style.height=(window.innerHeight-130)+'px';
+  if(mapaLive){mapaLive.invalidateSize();return;}
+  mapaLive=L.map('mapa-live').setView([36.6849,-6.1259],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapaLive);
+  onSnapshot(collection(db,'localizacion'),snap=>{
+    snap.forEach(d=>{
+      const dat=d.data(),uid=d.id;
+      if(!dat.lat||!dat.lng)return;
+      const est=dat.estado||'en_ruta';
+      const color=est==='accidente'||est==='averia'?'#e63946':est==='vertedero'?'#f4a261':'#52b788';
+      const ico=L.divIcon({html:`<div style="background:${color};width:13px;height:13px;border-radius:50%;border:2px solid white;box-shadow:0 0 7px ${color}"></div>`,className:'',iconAnchor:[6,6]});
+
+      // Obtener estado adicional de historial si existe
+      let estadoExtra = '';
+      if (dat.timestamp?.seconds) {
+        const haceSegundos = (Date.now()/1000) - dat.timestamp.seconds;
+        if (haceSegundos < 60) estadoExtra = `Hace ${Math.round(haceSegundos)}s`;
+        else if (haceSegundos < 3600) estadoExtra = `Hace ${Math.round(haceSegundos/60)} min`;
+        else estadoExtra = `Hace ${Math.round(haceSegundos/3600)} h`;
+      }
+
+      const pop=`<b>${dat.conductorNombre||'Conductor'}</b><br>Estado: ${est}<br>Punto actual: ${(dat.indexContenedor||0)+1}${estadoExtra?`<br><small>${estadoExtra}</small>`:''}`;
+      if(marcadoresLive[uid])marcadoresLive[uid].setLatLng([dat.lat,dat.lng]).setIcon(ico).setPopupContent(pop);
+      else marcadoresLive[uid]=L.marker([dat.lat,dat.lng],{icon:ico}).addTo(mapaLive).bindPopup(pop);
+    });
+  });
+}
+
+// ── INCIDENCIAS ──
+function escucharIncidencias(){
+  onSnapshot(collection(db,'incidencias'),snap=>{
+    const nuevasIds = new Set();
+    const nuevos = [];
+    incDocs=[];
+    snap.forEach(d=>{
+      incDocs.push({id:d.id,...d.data()});
+      nuevasIds.add(d.id);
+      if (!primeraCargaInc && !ultimasIncidenciasIds.has(d.id)) {
+        nuevos.push(d.id);
+      }
+    });
+
+    // Detectar incidencias nuevas tras la primera carga
+    if (nuevos.length && !primeraCargaInc) {
+      notificarNuevaIncidencia();
+      // Añadir al contador de no vistas
+      const noVistas = obtenerNoVistas();
+      nuevos.forEach(id => noVistas.add(id));
+      guardarNoVistas(noVistas);
+    }
+
+    ultimasIncidenciasIds = nuevasIds;
+    primeraCargaInc = false;
+
+    incDocs.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    const pend=incDocs.filter(i=>i.estado==='pendiente').length;
+    document.getElementById('cnt-inc').textContent=`${pend} pendiente${pend!==1?'s':''} · ${incDocs.length} total`;
+    document.getElementById('tab-inc-btn').textContent=pend?`⚠ Incidencias (${pend})`:'⚠ Incidencias';
+
+    actualizarBadgeCampana();
+
+    if(document.getElementById('tab-incidencias').classList.contains('on')){
+      renderIncidencias();
+      // Al entrar a la pestaña incidencias, marcar todas como vistas
+      marcarIncidenciasVistas();
+    }
+  });
+}
+
+// ── Gestión de incidencias no vistas (badge campana) ──
+function obtenerNoVistas() {
+  try {
+    const data = localStorage.getItem('inc_no_vistas_' + (usuario?.uid || ''));
+    return new Set(data ? JSON.parse(data) : []);
+  } catch(e) { return new Set(); }
+}
+
+function guardarNoVistas(set) {
+  try {
+    localStorage.setItem('inc_no_vistas_' + (usuario?.uid || ''), JSON.stringify([...set]));
+  } catch(e) {}
+}
+
+function actualizarBadgeCampana() {
+  const noVistas = obtenerNoVistas();
+  // Filtrar solo las que aún existen
+  const validas = [...noVistas].filter(id => ultimasIncidenciasIds.has(id));
+  const cantidad = validas.length;
+  const badge = document.getElementById('campana-badge');
+  const campana = document.getElementById('campana');
+  if (cantidad > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = cantidad > 99 ? '99+' : cantidad;
+    campana.classList.add('campana-activa');
+  } else {
+    badge.style.display = 'none';
+    campana.classList.remove('campana-activa');
+  }
+}
+
+function marcarIncidenciasVistas() {
+  // Vaciar el set de no vistas
+  guardarNoVistas(new Set());
+  actualizarBadgeCampana();
+}
+
+function renderIncidencias(){
+  const lista=document.getElementById('inc-lista');
+  if(!incDocs.length){lista.innerHTML='<div class="empty">No hay incidencias</div>';return;}
+  lista.innerHTML=incDocs.map(i=>`
+    <div class="inc-card">
+      <div class="inc-header">
+        <div>
+          <div class="inc-tipo">${i.tipoEtiqueta||i.tipo||'Incidencia'}</div>
+          <div style="font-size:11px;color:var(--gris);margin-top:1px">${i.fechaTexto||''}</div>
+        </div>
+        <span class="inc-tag ${i.estado==='pendiente'?'tag-pend':'tag-res'}">${i.estado==='pendiente'?'Pendiente':'Resuelta'}</span>
+      </div>
+      <div class="inc-det">
+        Inspector: ${i.inspectorNombre||'—'}<br>
+        ${i.recorridoNombre?`Recorrido: ${i.recorridoNombre}<br>`:''}
+        ${i.contenedorRef?`<span style="color:var(--vc);font-weight:500">📍 Contenedor ${i.contenedorRef.numero||''} · ${i.contenedorRef.calle||''}</span>${i.contenedorRef.nota?`<br><span style="font-size:11px;opacity:0.7">⚠ ${i.contenedorRef.nota}</span>`:''}<br>`:''}
+        ${i.descripcion?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);">${i.descripcion}</div>`:''}
+      </div>
+      ${i.foto?`<img class="inc-foto" src="${i.foto}" alt="foto">`:''}
+      ${i.coords?`<div style="font-size:11px;color:var(--gris);margin-top:5px">📍 <a href="https://maps.google.com/?q=${i.coords.lat},${i.coords.lng}" target="_blank" style="color:var(--purpura-c)">Ver en mapa</a></div>`:''}
+      <div class="inc-acciones">
+        ${i.estado==='pendiente'
+          ? `<button class="btn-res" onclick="resolverInc('${i.id}')">✓ Marcar resuelta</button>`
+          : `<button class="btn-reabrir" onclick="reabrirInc('${i.id}')">↶ Reabrir</button>`}
+        <button class="btn-del-inc" onclick="borrarInc('${i.id}')">🗑 Borrar</button>
+      </div>
+    </div>`).join('');
+}
+
+window.resolverInc=async function(id){
+  await updateDoc(doc(db,'incidencias',id),{estado:'resuelta'});
+};
+
+window.reabrirInc=async function(id){
+  await updateDoc(doc(db,'incidencias',id),{estado:'pendiente'});
+};
+
+window.borrarInc=async function(id){
+  if(!confirm('¿Borrar definitivamente esta incidencia?\nEsta acción no se puede deshacer.')) return;
+  try{
+    await deleteDoc(doc(db,'incidencias',id));
+  }catch(e){
+    alert('Error al borrar: '+e.message+'\n\nLas reglas de Firestore solo permiten borrar incidencias al administrador.');
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+// ══ HISTORIAL Y ESTADÍSTICAS ══
+// ══════════════════════════════════════════════════════════
+let histDocs = [];
+let histFiltrado = [];
+let usuariosMap = {}; // UID → {nombre, rol}
+
+async function cargarUsuarios() {
+  try {
+    const snap = await getDocs(collection(db,'usuarios'));
+    snap.forEach(d => { usuariosMap[d.id] = d.data(); });
+    // Rellenar selector de conductores
+    const sel = document.getElementById('filtro-conductor');
+    const actualSel = sel.value;
+    sel.innerHTML = '<option value="">Todos los conductores</option>';
+    Object.entries(usuariosMap).forEach(([uid, u]) => {
+      if (u.rol === 'conductor') {
+        const op = document.createElement('option');
+        op.value = uid;
+        op.textContent = u.nombre || u.email || uid;
+        sel.appendChild(op);
+      }
+    });
+    sel.value = actualSel;
+  } catch(e) { console.warn('No se pueden cargar usuarios:', e); }
+}
+
+async function cargarHistorial() {
+  const lista = document.getElementById('hist-lista');
+  lista.innerHTML = '<div class="empty">Cargando historial...</div>';
+
+  try {
+    await cargarUsuarios();
+    const snap = await getDocs(collection(db,'historial'));
+    histDocs = [];
+    snap.forEach(d => histDocs.push({id:d.id, ...d.data()}));
+    histDocs.sort((a,b) => (b.horaInicio?.seconds || 0) - (a.horaInicio?.seconds || 0));
+    aplicarFiltroHistorial();
+  } catch(e) {
+    console.error(e);
+    lista.innerHTML = '<div class="empty" style="color:var(--rojo)">Error al cargar historial</div>';
+  }
+}
+
+window.aplicarFiltroHistorial = function() {
+  const periodo = document.getElementById('filtro-periodo').value;
+  const conductorId = document.getElementById('filtro-conductor').value;
+
+  const desdeInput = document.getElementById('filtro-desde');
+  const hastaInput = document.getElementById('filtro-hasta');
+
+  // Mostrar u ocultar inputs de fecha
+  const mostrarFechas = periodo === 'personalizado';
+  desdeInput.style.display = mostrarFechas ? 'inline-block' : 'none';
+  hastaInput.style.display = mostrarFechas ? 'inline-block' : 'none';
+
+  // Calcular rango de fechas
+  let desde = null, hasta = null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  if (periodo === 'hoy') {
+    desde = hoy;
+    hasta = new Date(hoy.getTime() + 86400000);
+  } else if (periodo === 'ayer') {
+    desde = new Date(hoy.getTime() - 86400000);
+    hasta = hoy;
+  } else if (periodo === 'semana') {
+    const diaSemana = (hoy.getDay() + 6) % 7; // lunes=0
+    desde = new Date(hoy.getTime() - diaSemana*86400000);
+    hasta = new Date(hoy.getTime() + 86400000);
+  } else if (periodo === 'mes') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    hasta = new Date(hoy.getTime() + 86400000);
+  } else if (periodo === 'personalizado') {
+    if (desdeInput.value) desde = new Date(desdeInput.value);
+    if (hastaInput.value) { hasta = new Date(hastaInput.value); hasta.setDate(hasta.getDate()+1); }
+  }
+
+  // Filtrar
+  histFiltrado = histDocs.filter(h => {
+    if (conductorId && h.conductorId !== conductorId) return false;
+    if (!desde && !hasta) return true;
+    const horaHist = h.horaInicio?.toDate?.() || (h.horaInicio?.seconds ? new Date(h.horaInicio.seconds*1000) : null);
+    if (!horaHist) return false;
+    if (desde && horaHist < desde) return false;
+    if (hasta && horaHist >= hasta) return false;
+    return true;
+  });
+
+  renderEstadisticas();
+  renderGraficas();
+  renderHistorialLista();
+};
+
+function renderEstadisticas() {
+  const grid = document.getElementById('stats-grid');
+  const total = histFiltrado.length;
+  const completados = histFiltrado.filter(h=>h.estado==='completado').length;
+  const interrumpidos = histFiltrado.filter(h=>h.estado==='interrumpido').length;
+  const enCurso = histFiltrado.filter(h=>h.estado==='en_curso').length;
+  const totalContenedores = histFiltrado.reduce((s,h)=>s+(h.contenedoresRecogidos||0),0);
+  const totalPendientes = histFiltrado.reduce((s,h)=>s+(h.contenedoresPendientes||0),0);
+  const duraciones = histFiltrado.filter(h=>h.duracionMinutos>0).map(h=>h.duracionMinutos);
+  const duracionMedia = duraciones.length ? Math.round(duraciones.reduce((a,b)=>a+b,0)/duraciones.length) : 0;
+
+  grid.innerHTML = `
+    <div class="stat-card"><div class="stat-label">Recorridos totales</div><div class="stat-valor">${total}</div><div class="stat-sub">en el período</div></div>
+    <div class="stat-card verde"><div class="stat-label">Completados</div><div class="stat-valor">${completados}</div><div class="stat-sub">${total?Math.round(completados/total*100):0}% del total</div></div>
+    <div class="stat-card amarillo"><div class="stat-label">Interrumpidos</div><div class="stat-valor">${interrumpidos}</div><div class="stat-sub">con pendientes</div></div>
+    <div class="stat-card"><div class="stat-label">Contenedores recogidos</div><div class="stat-valor">${totalContenedores}</div><div class="stat-sub">${totalPendientes} pendientes</div></div>
+    <div class="stat-card"><div class="stat-label">Tiempo medio / ruta</div><div class="stat-valor">${duracionMedia}</div><div class="stat-sub">minutos</div></div>
+    ${enCurso?`<div class="stat-card" style="border-color:rgba(66,133,244,0.3)"><div class="stat-label">En curso ahora</div><div class="stat-valor" style="color:#4285f4">${enCurso}</div><div class="stat-sub">activos</div></div>`:''}
+  `;
+}
+
+function renderGraficas() {
+  const area = document.getElementById('graficas-area');
+
+  // Por conductor: contenedores recogidos
+  const porConductor = {};
+  histFiltrado.forEach(h => {
+    const k = h.conductorNombre || h.conductorId;
+    porConductor[k] = (porConductor[k]||0) + (h.contenedoresRecogidos||0);
+  });
+  const entries1 = Object.entries(porConductor).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max1 = entries1[0]?.[1] || 1;
+
+  // Por zona: incidencias
+  const porZona = {};
+  histFiltrado.forEach(h => {
+    if (h.incidencias?.length) {
+      const k = h.zona || h.recorridoNombre || '?';
+      porZona[k] = (porZona[k]||0) + h.incidencias.length;
+    }
+  });
+  const entries2 = Object.entries(porZona).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max2 = entries2[0]?.[1] || 1;
+
+  // Contenedores más veces pendientes (por número)
+  const pendientes = {};
+  histFiltrado.forEach(h => {
+    (h.contenedores||[]).forEach(c => {
+      if (!c.recogido) {
+        const k = `${c.numero||'?'} · ${c.calle||''}`.slice(0,50);
+        pendientes[k] = (pendientes[k]||0) + 1;
+      }
+    });
+  });
+  const entries3 = Object.entries(pendientes).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max3 = entries3[0]?.[1] || 1;
+
+  area.innerHTML = `
+    <div class="grafica-card">
+      <div class="grafica-tit">🚚 Contenedores recogidos por conductor</div>
+      ${entries1.length ? entries1.map(([n,v])=>`
+        <div class="barra-item">
+          <div class="barra-nom">${n}</div>
+          <div class="barra-fondo"><div class="barra-rell" style="width:${v/max1*100}%"></div></div>
+          <div class="barra-val">${v}</div>
+        </div>`).join('') : '<div class="empty" style="padding:10px 0">Sin datos</div>'}
+    </div>
+    <div class="grafica-card">
+      <div class="grafica-tit">⚠ Incidencias por zona / recorrido</div>
+      ${entries2.length ? entries2.map(([n,v])=>`
+        <div class="barra-item">
+          <div class="barra-nom">${n}</div>
+          <div class="barra-fondo"><div class="barra-rell" style="background:linear-gradient(90deg,#f4a261,#e63946);width:${v/max2*100}%"></div></div>
+          <div class="barra-val">${v}</div>
+        </div>`).join('') : '<div class="empty" style="padding:10px 0">Sin incidencias</div>'}
+    </div>
+    <div class="grafica-card" style="grid-column:1/-1">
+      <div class="grafica-tit">📍 Contenedores más veces pendientes</div>
+      ${entries3.length ? entries3.map(([n,v])=>`
+        <div class="barra-item">
+          <div class="barra-nom">${n}</div>
+          <div class="barra-fondo"><div class="barra-rell" style="background:linear-gradient(90deg,#f4a261,#e63946);width:${v/max3*100}%"></div></div>
+          <div class="barra-val">${v}</div>
+        </div>`).join('') : '<div class="empty" style="padding:10px 0">Todos los contenedores se recogen normalmente</div>'}
+    </div>
+  `;
+}
+
+function renderHistorialLista() {
+  const lista = document.getElementById('hist-lista');
+  if (!histFiltrado.length) {
+    lista.innerHTML = '<div class="empty">No hay recorridos en este período</div>';
+    return;
+  }
+  lista.innerHTML = histFiltrado.map(h => {
+    const pct = h.totalContenedores ? Math.round((h.contenedoresRecogidos||0)/h.totalContenedores*100) : 0;
+    const estadoClase = h.estado==='completado'?'estado-completado':h.estado==='interrumpido'?'estado-interrumpido':'estado-encurso';
+    let estadoTxt = h.estado==='completado'?'Completado':h.estado==='interrumpido'?'Interrumpido':'En curso';
+    // Añadir estado detallado si está en curso
+    if (h.estado === 'en_curso' && h.estadoActual === 'navegando_maps') {
+      estadoTxt = 'En Google Maps';
+    }
+    const fecha = h.horaInicio?.toDate?.() || (h.horaInicio?.seconds ? new Date(h.horaInicio.seconds*1000) : null);
+    const fechaCorta = fecha ? fecha.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—';
+    const hora = fecha ? fecha.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) : '';
+    return `
+      <div class="hist-item">
+        <div class="hist-fecha"><b>${fechaCorta}</b><br>${hora}</div>
+        <div class="hist-datos">
+          <div class="hist-nom">R${h.recorridoNumero||'?'} · ${h.recorridoNombre||'Recorrido'}</div>
+          <div class="hist-meta">${h.conductorNombre||'—'}${h.duracionMinutos?` · ${h.duracionMinutos} min`:''}${h.incidencias?.length?` · ${h.incidencias.length} incidencia${h.incidencias.length>1?'s':''}`:''}</div>
+        </div>
+        <div class="hist-prog">
+          <div style="font-size:12px"><b>${h.contenedoresRecogidos||0}</b>/${h.totalContenedores||0}</div>
+          <div class="hist-prog-bar"><div class="hist-prog-rell" style="width:${pct}%"></div></div>
+        </div>
+        <span class="hist-estado ${estadoClase}">${estadoTxt}</span>
+        <button class="btn-del-hist" onclick="borrarHistItem('${h.id}')" title="Borrar registro">🗑</button>
+      </div>`;
+  }).join('');
+}
+
+window.borrarHistItem = async function(id) {
+  const h = histDocs.find(x => x.id === id);
+  const desc = h ? `${h.recorridoNombre||'Recorrido'} · ${h.conductorNombre||''}` : 'este recorrido';
+  if (!confirm(`¿Borrar el registro de ${desc}?\nEsta acción no se puede deshacer.`)) return;
+  try {
+    await deleteDoc(doc(db, 'historial', id));
+    histDocs = histDocs.filter(x => x.id !== id);
+    aplicarFiltroHistorial();
+  } catch(e) {
+    alert('Error al borrar: ' + e.message + '\n\nSolo el administrador puede borrar registros.');
+  }
+};
+
+window.borrarHistorialFiltrado = async function() {
+  if (!histFiltrado.length) {
+    alert('No hay registros en el filtro actual para borrar.');
+    return;
+  }
+  const periodo = document.getElementById('filtro-periodo').selectedOptions[0].text;
+  if (!confirm(`¿Borrar los ${histFiltrado.length} registros del período "${periodo}"?\n\nEsta acción no se puede deshacer.`)) return;
+  // Segunda confirmación para operaciones masivas
+  if (!confirm(`Última confirmación:\n\nSe borrarán definitivamente ${histFiltrado.length} recorridos del historial.\n\n¿Continuar?`)) return;
+
+  const ids = histFiltrado.map(h => h.id);
+  let borrados = 0, errores = 0;
+  // Borrar en paralelo pero con pequeña espera para no saturar Firebase
+  for (const id of ids) {
+    try {
+      await deleteDoc(doc(db, 'historial', id));
+      borrados++;
+    } catch(e) {
+      errores++;
+    }
+  }
+
+  alert(`Borrados: ${borrados}\n${errores ? `Errores: ${errores}` : ''}`);
+  histDocs = histDocs.filter(h => !ids.includes(h.id));
+  aplicarFiltroHistorial();
+};
+
+window.exportarHistorial = function() {
+  if (!histFiltrado.length) { alert('No hay datos para exportar'); return; }
+  const fecha = new Date().toLocaleString('es-ES');
+  const periodo = document.getElementById('filtro-periodo').selectedOptions[0].text;
+
+  const filas = histFiltrado.map(h => {
+    const f = h.horaInicio?.toDate?.() || (h.horaInicio?.seconds ? new Date(h.horaInicio.seconds*1000) : null);
+    return `<tr>
+      <td>${f?f.toLocaleString('es-ES'):'—'}</td>
+      <td><b>R${h.recorridoNumero||'?'}</b> ${h.recorridoNombre||''}</td>
+      <td>${h.conductorNombre||'—'}</td>
+      <td>${h.estado}</td>
+      <td>${h.contenedoresRecogidos||0} / ${h.totalContenedores||0}</td>
+      <td>${h.duracionMinutos||0} min</td>
+      <td>${h.incidencias?.length||0}</td>
+    </tr>`;
+  }).join('');
+
+  const total = histFiltrado.length;
+  const completados = histFiltrado.filter(h=>h.estado==='completado').length;
+  const totalContRec = histFiltrado.reduce((s,h)=>s+(h.contenedoresRecogidos||0),0);
+  const totalContPen = histFiltrado.reduce((s,h)=>s+(h.contenedoresPendientes||0),0);
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe RECORRIDOS</title>
+<style>body{font-family:Arial;margin:30px;color:#222;font-size:13px}
+h1{color:#2d6a4f;font-size:22px;margin-bottom:6px}h2{color:#666;font-size:13px;font-weight:normal;margin-bottom:20px}
+.box{background:#f5f5f5;padding:14px 16px;border-radius:6px;margin-bottom:18px;font-size:13px;line-height:1.8}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.kpi{background:#2d6a4f;color:white;padding:12px;border-radius:6px;text-align:center}
+.kpi-v{font-size:28px;font-weight:bold;display:block}
+.kpi-l{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:0.85}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{background:#2d6a4f;color:white;padding:9px 10px;text-align:left;font-size:12px}
+td{padding:8px 10px;border-bottom:1px solid #eee}
+tr:nth-child(even){background:#f9f9f9}
+.footer{margin-top:28px;font-size:11px;color:#999;border-top:1px solid #ddd;padding-top:12px}
+</style></head><body>
+<h1>📊 INFORME DE RECORRIDOS</h1>
+<h2>Período: ${periodo} · Generado: ${fecha}</h2>
+<div class="kpis">
+  <div class="kpi"><span class="kpi-v">${total}</span><span class="kpi-l">Total rutas</span></div>
+  <div class="kpi"><span class="kpi-v">${completados}</span><span class="kpi-l">Completadas</span></div>
+  <div class="kpi"><span class="kpi-v">${totalContRec}</span><span class="kpi-l">Contenedores</span></div>
+  <div class="kpi" style="background:#f4a261"><span class="kpi-v">${totalContPen}</span><span class="kpi-l">Pendientes</span></div>
+</div>
+<table>
+  <thead><tr><th>Fecha</th><th>Recorrido</th><th>Conductor</th><th>Estado</th><th>Recogidos</th><th>Duración</th><th>Incidencias</th></tr></thead>
+  <tbody>${filas}</tbody>
+</table>
+<div class="footer">Sistema RECORRIDOS · ${fecha}</div>
+</body></html>`;
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  a.download = `informe_recorridos_${new Date().toLocaleDateString('es-ES').replace(/\//g,'-')}.html`;
+  a.click();
+};
+// ══════════════════════════════════════════════════════════
+// ══ GESTIÓN DE USUARIOS (FASE 5) ══
+// ══════════════════════════════════════════════════════════
+let usuariosDocs = [];
+let usrEditandoUid = null;
+
+async function cargarUsuariosAdmin() {
+  const lista = document.getElementById('usuarios-lista');
+  lista.innerHTML = '<div class="empty">Cargando usuarios...</div>';
+  try {
+    const snap = await getDocs(collection(db, 'usuarios'));
+    usuariosDocs = [];
+    snap.forEach(d => usuariosDocs.push({id: d.id, ...d.data()}));
+    // Ordenar por rol (admin → inspector → conductor) y luego por nombre
+    const ordenRol = {administrador:0, inspector:1, conductor:2};
+    usuariosDocs.sort((a,b) => {
+      const r = (ordenRol[a.rol]||9) - (ordenRol[b.rol]||9);
+      if (r !== 0) return r;
+      return (a.nombre||'').localeCompare(b.nombre||'');
+    });
+    renderUsuariosAdmin();
+  } catch(e) {
+    lista.innerHTML = `<div class="empty" style="color:var(--rojo)">Error al cargar usuarios</div>`;
+  }
+}
+
+function renderUsuariosAdmin() {
+  const lista = document.getElementById('usuarios-lista');
+  if (!usuariosDocs.length) {
+    lista.innerHTML = '<div class="empty">No hay usuarios registrados</div>';
+    return;
+  }
+  lista.innerHTML = usuariosDocs.map(u => {
+    const rol = u.rol || 'conductor';
+    const inicial = (u.nombre || u.email || '?').charAt(0).toUpperCase();
+    const clase = u.activo === false ? 'inactivo' : '';
+    return `
+      <div class="usr-card ${clase}" onclick="abrirEditorUsuario('${u.id}')">
+        <div class="usr-avatar usr-av-${rol}">${inicial}</div>
+        <div class="usr-info">
+          <div class="usr-nombre">${u.nombre || '(sin nombre)'}</div>
+          <div class="usr-email">${u.email || ''}</div>
+          <div class="usr-meta">
+            <span class="usr-rol-badge rol-b-${rol}">${rol}</span>
+            ${u.telefono ? `<span>📞 ${u.telefono}</span>` : ''}
+            <span>${u.activo === false ? 'Inactivo' : 'Activo'}</span>
+            ${u.requiereCambioClave ? `<span style="color:var(--am);font-size:9px;letter-spacing:1px;background:rgba(244,162,97,0.15);padding:2px 6px;border-radius:6px">🔐 PRIMER LOGIN</span>` : ''}
+          </div>
+        </div>
+        <div class="${u.activo === false ? 'usr-inactivo-dot' : 'usr-activo-dot'}"></div>
+      </div>`;
+  }).join('');
+}
+
+window.abrirEditorUsuario = function(uid) {
+  usrEditandoUid = uid;
+  const modal = document.getElementById('modal-usuario');
+  const btnBorrar = document.getElementById('btn-borrar-usr');
+  const instruccion = document.getElementById('usr-instruccion');
+  const campoUid = document.getElementById('usr-campo-uid');
+
+  if (uid) {
+    // Editar existente
+    const u = usuariosDocs.find(x => x.id === uid);
+    if (!u) return;
+    document.getElementById('usr-titulo').textContent = 'EDITAR USUARIO';
+    document.getElementById('usr-nombre-usuario').value = (u.email || '').replace('@recorridos.app','');
+    document.getElementById('usr-nombre-usuario').disabled = true;
+    document.getElementById('usr-nombre').value = u.nombre || '';
+    document.getElementById('usr-rol').value = u.rol || 'conductor';
+    document.getElementById('usr-telefono').value = u.telefono || '';
+    document.getElementById('usr-activo').checked = u.activo !== false;
+    document.getElementById('usr-req-cambio').checked = u.requiereCambioClave === true;
+    document.getElementById('usr-uid').value = u.id;
+    document.getElementById('usr-uid').disabled = true;
+    btnBorrar.style.display = 'flex';
+    document.getElementById('btn-reset-clave-usr').style.display = 'flex';
+    instruccion.style.display = 'none';
+    campoUid.style.display = 'none';
+  } else {
+    // Nuevo
+    document.getElementById('usr-titulo').textContent = 'NUEVO USUARIO';
+    document.getElementById('usr-nombre-usuario').value = '';
+    document.getElementById('usr-nombre-usuario').disabled = false;
+    document.getElementById('usr-nombre').value = '';
+    document.getElementById('usr-rol').value = 'conductor';
+    document.getElementById('usr-telefono').value = '';
+    document.getElementById('usr-activo').checked = true;
+    document.getElementById('usr-req-cambio').checked = true;  // Por defecto al crear nuevo
+    document.getElementById('usr-uid').value = '';
+    document.getElementById('usr-uid').disabled = false;
+    btnBorrar.style.display = 'none';
+    document.getElementById('btn-reset-clave-usr').style.display = 'none';
+    instruccion.style.display = 'block';
+    campoUid.style.display = 'block';
+  }
+
+  // Actualizar el email mostrado en la instrucción dinámicamente
+  const inputUsr = document.getElementById('usr-nombre-usuario');
+  const actualizarEmail = () => {
+    const email = inputUsr.value.trim();
+    document.getElementById('usr-email-mostrar').textContent = email ? `${email}@recorridos.app` : '(rellena el usuario arriba)';
+  };
+  inputUsr.oninput = actualizarEmail;
+  actualizarEmail();
+
+  modal.classList.add('on');
+};
+
+window.guardarUsuario = async function() {
+  const nombreUsuario = document.getElementById('usr-nombre-usuario').value.trim();
+  const nombre = document.getElementById('usr-nombre').value.trim();
+  const rol = document.getElementById('usr-rol').value;
+  const telefono = document.getElementById('usr-telefono').value.trim();
+  const activo = document.getElementById('usr-activo').checked;
+  const requiereCambioClave = document.getElementById('usr-req-cambio').checked;
+  const uid = document.getElementById('usr-uid').value.trim();
+
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  if (!usrEditandoUid && !uid) {
+    alert('Falta el UID de Firebase Auth.\n\nPrimero crea la cuenta en Firebase Console → Authentication y copia aquí el UID generado.');
+    return;
+  }
+
+  const email = `${nombreUsuario}@recorridos.app`;
+  const datos = {
+    nombre, rol, telefono, activo, email,
+    requiereCambioClave,
+    actualizadoEn: serverTimestamp()
+  };
+
+  const idFinal = usrEditandoUid || uid;
+
+  try {
+    await updateDoc(doc(db, 'usuarios', idFinal), datos).catch(async () => {
+      // Si no existe el documento, lo creamos con setDoc
+      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      await setDoc(doc(db, 'usuarios', idFinal), datos);
+    });
+    window.cerrarModales();
+    cargarUsuariosAdmin();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  }
+};
+
+window.borrarUsuario = async function() {
+  if (!usrEditandoUid) return;
+  const u = usuariosDocs.find(x => x.id === usrEditandoUid);
+  if (!confirm(`¿Borrar el usuario ${u?.nombre || usrEditandoUid}?\n\nEsta acción no se puede deshacer. Recuerda que para borrar por completo la cuenta, también tendrás que eliminarla en Firebase Authentication.`)) return;
+  try {
+    await deleteDoc(doc(db, 'usuarios', usrEditandoUid));
+    window.cerrarModales();
+    cargarUsuariosAdmin();
+  } catch(e) {
+    alert('Error al borrar: ' + e.message);
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+// ══ AJUSTES GENERALES (FASE 5) ══
+// ══════════════════════════════════════════════════════════
+async function cargarAjustes() {
+  try {
+    const snap = await getDoc(doc(db, 'ajustes', 'general'));
+    if (snap.exists()) {
+      const a = snap.data();
+      document.getElementById('aj-municipio').value = a.municipio || '';
+      document.getElementById('aj-tel-emergencia').value = a.telEmergencia || '112';
+      document.getElementById('aj-tel-taller').value = a.telTaller || '';
+      document.getElementById('aj-tel-supervisor').value = a.telSupervisor || '';
+      document.getElementById('aj-tel-central').value = a.telCentral || '';
+      document.getElementById('aj-vert1').value = a.vertedero1 ? `${a.vertedero1.lat}, ${a.vertedero1.lng}` : '';
+      document.getElementById('aj-vert2').value = a.vertedero2 ? `${a.vertedero2.lat}, ${a.vertedero2.lng}` : '';
+      document.getElementById('aj-vert3').value = a.vertedero3 ? `${a.vertedero3.lat}, ${a.vertedero3.lng}` : '';
+      document.getElementById('aj-peso').value = a.camionPeso || 18;
+      document.getElementById('aj-altura').value = a.camionAltura || 4;
+      document.getElementById('aj-ancho').value = a.camionAncho || 2.55;
+      document.getElementById('aj-largo').value = a.camionLargo || 10;
+      document.getElementById('aj-sonido-inc').checked = a.sonidoIncidencia !== false;
+      document.getElementById('aj-sonido-emerg').checked = a.sonidoEmergencia !== false;
+    }
+  } catch(e) { console.warn('No se pudieron cargar ajustes:', e); }
+}
+
+function parseCoords(str) {
+  if (!str) return null;
+  const partes = str.split(',').map(s => parseFloat(s.trim()));
+  if (partes.length !== 2 || isNaN(partes[0]) || isNaN(partes[1])) return null;
+  return {lat: partes[0], lng: partes[1]};
+}
+
+window.guardarAjustes = async function() {
+  const datos = {
+    municipio: document.getElementById('aj-municipio').value.trim(),
+    telEmergencia: document.getElementById('aj-tel-emergencia').value.trim() || '112',
+    telTaller: document.getElementById('aj-tel-taller').value.trim(),
+    telSupervisor: document.getElementById('aj-tel-supervisor').value.trim(),
+    telCentral: document.getElementById('aj-tel-central').value.trim(),
+    vertedero1: parseCoords(document.getElementById('aj-vert1').value),
+    vertedero2: parseCoords(document.getElementById('aj-vert2').value),
+    vertedero3: parseCoords(document.getElementById('aj-vert3').value),
+    camionPeso: parseFloat(document.getElementById('aj-peso').value) || 18,
+    camionAltura: parseFloat(document.getElementById('aj-altura').value) || 4,
+    camionAncho: parseFloat(document.getElementById('aj-ancho').value) || 2.55,
+    camionLargo: parseFloat(document.getElementById('aj-largo').value) || 10,
+    sonidoIncidencia: document.getElementById('aj-sonido-inc').checked,
+    sonidoEmergencia: document.getElementById('aj-sonido-emerg').checked,
+    actualizadoEn: serverTimestamp()
+  };
+  try {
+    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await setDoc(doc(db, 'ajustes', 'general'), datos, {merge: true});
+    alert('✓ Ajustes guardados correctamente');
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+// ══ NOTIFICACIONES DE INCIDENCIAS (FASE 5) ══
+// ══════════════════════════════════════════════════════════
+let ultimasIncidenciasIds = new Set();
+let primeraCargaInc = true;
+
+function notificarNuevaIncidencia() {
+  // Sonido de campanilla suave
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [800, 1100].forEach((f, i) => {
+      setTimeout(() => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.frequency.value = f; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.4);
+      }, i * 180);
+    });
+  } catch(e) {}
+  // Destello visual en el tab
+  const tab = document.getElementById('tab-inc-btn');
+  tab.style.animation = 'destelloInc 0.5s ease 4';
+  setTimeout(() => tab.style.animation = '', 2200);
+}
+
+// ══════════════════════════════════════════════════════════
+// ══ ASISTENTE NUEVO USUARIO + PDF BIENVENIDA (FASE 5) ══
+// ══════════════════════════════════════════════════════════
+let datosAsistente = {};
+
+// Función global para cerrar todos los modales
+window.cerrarModales = function(){
+  document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('on'));
+};
+
+window.abrirAsistenteUsuario = function(){
+  window.cerrarModales();
+  // Resetear todos los campos
+  document.getElementById('asis-nombre').value = '';
+  document.getElementById('asis-email').value = '';
+  document.getElementById('asis-rol').value = 'conductor';
+  document.getElementById('asis-telefono').value = '';
+  document.getElementById('asis-clave-temp').value = 'Bienvenido' + new Date().getFullYear();
+  document.getElementById('asis-uid').value = '';
+  // Mostrar paso 1
+  document.querySelectorAll('.paso-asis').forEach(p => p.classList.remove('paso-on'));
+  document.getElementById('paso-1').classList.add('paso-on');
+  document.getElementById('modal-asistente').classList.add('on');
+};
+
+window.generarClave = function(){
+  // Generar contraseña memorable: palabra + 3 dígitos
+  const palabras = ['Bienvenido','Trabajo','Recogida','Camion','Ciudad','Equipo','Acceso','Estrella','Luna','Sol'];
+  const palabra = palabras[Math.floor(Math.random()*palabras.length)];
+  const numeros = Math.floor(100 + Math.random()*900);
+  document.getElementById('asis-clave-temp').value = `${palabra}${numeros}`;
+};
+
+window.paso1Siguiente = function(){
+  const nombre = document.getElementById('asis-nombre').value.trim();
+  const email = document.getElementById('asis-email').value.trim();
+  const rol = document.getElementById('asis-rol').value;
+  const telefono = document.getElementById('asis-telefono').value.trim();
+  const claveTemp = document.getElementById('asis-clave-temp').value;
+
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  if (!email) { alert('El email es obligatorio'); return; }
+  if (!email.includes('@')) { alert('El email debe tener formato válido (con @)'); return; }
+  if (claveTemp.length < 6) { alert('La contraseña temporal debe tener al menos 6 caracteres'); return; }
+
+  // Guardar datos para usar en pasos siguientes
+  datosAsistente = { nombre, email, rol, telefono, claveTemp };
+
+  // Mostrar email y clave en paso 2
+  document.getElementById('asis-email-mostrar').textContent = email;
+  document.getElementById('asis-clave-mostrar').textContent = claveTemp;
+
+  // Pasar al paso 2
+  document.querySelectorAll('.paso-asis').forEach(p => p.classList.remove('paso-on'));
+  document.getElementById('paso-2').classList.add('paso-on');
+};
+
+window.paso2Anterior = function(){
+  document.querySelectorAll('.paso-asis').forEach(p => p.classList.remove('paso-on'));
+  document.getElementById('paso-1').classList.add('paso-on');
+};
+
+window.paso2Finalizar = async function(){
+  const uid = document.getElementById('asis-uid').value.trim();
+  if (!uid || uid.length < 10) {
+    alert('Por favor pega el UID que te dio Firebase Console.\nEs una cadena larga de letras y números.');
+    return;
+  }
+
+  try {
+    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await setDoc(doc(db, 'usuarios', uid), {
+      nombre: datosAsistente.nombre,
+      email: datosAsistente.email,
+      rol: datosAsistente.rol,
+      telefono: datosAsistente.telefono,
+      activo: true,
+      requiereCambioClave: true,
+      creadoEn: serverTimestamp()
+    });
+
+    // Pasar al paso 3 - confirmación
+    document.querySelectorAll('.paso-asis').forEach(p => p.classList.remove('paso-on'));
+    document.getElementById('paso-3').classList.add('paso-on');
+
+    cargarUsuariosAdmin();
+  } catch(e) {
+    alert('Error al guardar el perfil: ' + e.message);
+  }
+};
+
+window.copiar = function(elementId, btn){
+  const txt = document.getElementById(elementId).textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    btn.style.color = 'var(--vc)';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.color = 'var(--purpura-c)';
+    }, 1500);
+  });
+};
+
+window.descargarPDFBienvenida = function(){
+  const d = datosAsistente;
+  const url = 'https://jorge1ra.github.io/recorridos/';
+  const usuarioCorto = d.email.split('@')[0];
+  const fecha = new Date().toLocaleDateString('es-ES');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Bienvenido a RECORRIDOS</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 40px; color: #222; background: #f5f3ee; }
+  .doc { max-width: 700px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+  .header { background: linear-gradient(135deg, #2d6a4f, #52b788); color: white; padding: 30px; margin: -40px -40px 30px; border-radius: 12px 12px 0 0; text-align: center; }
+  .header h1 { margin: 0; font-size: 32px; letter-spacing: 4px; }
+  .header p { margin: 8px 0 0; opacity: 0.9; font-size: 14px; letter-spacing: 2px; }
+  h2 { color: #2d6a4f; font-size: 18px; margin: 24px 0 12px; }
+  .saludo { font-size: 16px; line-height: 1.7; margin-bottom: 24px; }
+  .credenciales { background: #f0ede8; border: 2px dashed #2d6a4f; border-radius: 10px; padding: 24px; margin: 24px 0; }
+  .cred-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px dashed #ccc; }
+  .cred-item:last-child { border-bottom: none; }
+  .cred-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 2px; min-width: 110px; }
+  .cred-valor { font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #2d6a4f; flex: 1; }
+  .pasos { background: #fff8f0; border-left: 4px solid #f4a261; padding: 16px 20px; margin: 24px 0; }
+  .pasos ol { margin: 8px 0 0 20px; padding: 0; }
+  .pasos li { margin: 8px 0; line-height: 1.5; font-size: 14px; }
+  .alerta { background: #ffebee; border-left: 4px solid #c62828; padding: 12px 16px; margin: 20px 0; font-size: 13px; line-height: 1.5; color: #b71c1c; border-radius: 4px; }
+  .footer { text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #999; }
+  .rol-badge { display: inline-block; background: #2d6a4f; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-left: 8px; }
+  @media print {
+    body { background: white; padding: 0; }
+    .doc { box-shadow: none; }
+  }
+</style></head><body>
+<div class="doc">
+  <div class="header">
+    <h1>RECORRIDOS</h1>
+    <p>SISTEMA DE GESTIÓN DE RUTAS</p>
+  </div>
+
+  <p class="saludo">
+    Hola <strong>${d.nombre}</strong>,<br><br>
+    Te damos la bienvenida al sistema RECORRIDOS. Has sido registrado como
+    <span class="rol-badge">${d.rol}</span>
+    a partir del <strong>${fecha}</strong>.
+  </p>
+
+  <h2>📱 Tus credenciales de acceso</h2>
+  <div class="credenciales">
+    <div class="cred-item">
+      <div class="cred-label">URL de la app</div>
+      <div class="cred-valor">${url}</div>
+    </div>
+    <div class="cred-item">
+      <div class="cred-label">${d.email.endsWith('@recorridos.app') ? 'Usuario' : 'Email de acceso'}</div>
+      <div class="cred-valor">${d.email.endsWith('@recorridos.app') ? usuarioCorto : d.email}</div>
+    </div>
+    <div class="cred-item">
+      <div class="cred-label">Contraseña temporal</div>
+      <div class="cred-valor">${d.claveTemp}</div>
+    </div>
+  </div>
+
+  <h2>🚀 Cómo empezar</h2>
+  <div class="pasos">
+    <ol>
+      <li><strong>Abre la URL</strong> en el navegador del móvil o PC</li>
+      <li><strong>Introduce</strong> tu usuario y la contraseña temporal</li>
+      <li><strong>Cambia la contraseña</strong> (la app te lo pedirá automáticamente al primer acceso)</li>
+      <li><strong>¡Listo!</strong> Ya puedes usar RECORRIDOS con tu rol asignado</li>
+    </ol>
+  </div>
+
+  <div class="alerta">
+    <strong>⚠ Importante:</strong> No compartas tu contraseña con nadie. Una vez la cambies en el primer acceso, será privada y solo tú la conocerás.
+  </div>
+
+  <h2>❓ ¿Has olvidado tu contraseña?</h2>
+  <p style="font-size: 13px; line-height: 1.6;">
+    Si en el futuro olvidas tu contraseña, contacta con el administrador del sistema. Te facilitará una contraseña temporal nueva y podrás cambiarla por una propia siguiendo los mismos pasos.
+  </p>
+
+  <div class="footer">
+    Documento generado por RECORRIDOS · ${new Date().toLocaleString('es-ES')}<br>
+    Conserva este documento en lugar seguro hasta que cambies tu contraseña.
+  </div>
+</div>
+</body></html>`;
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  a.download = `bienvenida_${usuarioCorto}_${fecha.replace(/\//g,'-')}.html`;
+  a.click();
+};
+
+window.cerrarSesion=async function(){await signOut(auth);window.location.href='../index.html';};
+
+// ══ CAMBIAR MI PROPIA CONTRASEÑA ══
+window.abrirAjustesUsuario = function(){
+  document.getElementById('clave-actual').value = '';
+  document.getElementById('clave-nueva').value = '';
+  document.getElementById('clave-repetir').value = '';
+  window.cerrarModales();
+  document.getElementById('modal-clave').classList.add('on');
+};
+
+window.ejecutarCambioClave = async function(){
+  const actual = document.getElementById('clave-actual').value;
+  const nueva = document.getElementById('clave-nueva').value;
+  const repetir = document.getElementById('clave-repetir').value;
+  if (!actual || !nueva || !repetir) { alert('Rellena los tres campos'); return; }
+  if (nueva.length < 6) { alert('La nueva contraseña debe tener al menos 6 caracteres'); return; }
+  if (nueva !== repetir) { alert('Las contraseñas nuevas no coinciden'); return; }
+  if (nueva === actual) { alert('La nueva contraseña debe ser distinta a la actual'); return; }
+  const user = auth.currentUser;
+  if (!user) { alert('No hay sesión activa'); return; }
+  try {
+    const credencial = EmailAuthProvider.credential(user.email, actual);
+    await reauthenticateWithCredential(user, credencial);
+    await updatePassword(user, nueva);
+    window.cerrarModales();
+    alert('✓ Contraseña cambiada correctamente.');
+  } catch(e) {
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+      alert('❌ La contraseña actual no es correcta');
+    } else if (e.code === 'auth/weak-password') {
+      alert('❌ La nueva contraseña es demasiado débil');
+    } else {
+      alert('Error: ' + e.message);
+    }
+  }
+};
+
+// ══ RESETEAR CONTRASEÑA DE OTRO USUARIO (guía) ══
+let emailResetear = '';
+window.abrirResetearClave = function(uid){
+  const u = usuariosDocs.find(x => x.id === uid);
+  if (!u) return;
+  emailResetear = u.email || '';
+  document.getElementById('reset-email').textContent = emailResetear;
+  window.cerrarModales();
+  document.getElementById('modal-reset-ajeno').classList.add('on');
+};
+
+window.abrirFirebaseAuth = function(){
+  // Abre Firebase Console directamente en la pestaña de Authentication Users
+  const projectId = 'recorridos-app-f362a';
+  window.open(`https://console.firebase.google.com/project/${projectId}/authentication/users`, '_blank');
+};
+
+window.resetearClaveDesdeEditor = async function(){
+  if (!usrEditandoUid) return;
+  // Marcar automáticamente que requiere cambio en el próximo login
+  try {
+    await updateDoc(doc(db, 'usuarios', usrEditandoUid), {
+      requiereCambioClave: true,
+      ultimoReseteoClave: serverTimestamp()
+    });
+    document.getElementById('usr-req-cambio').checked = true;
+  } catch(e) {}
+  abrirResetearClave(usrEditandoUid);
+};
+
+window.toggleSidebar = function() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const tabRec = document.querySelectorAll('.tab')[0];
+  if (!tabRec.classList.contains('on')) {
+    cambiarTab('recorridos');
+    setTimeout(() => {
+      sb.classList.add('abierta');
+      ov.classList.add('on');
+      document.body.classList.add('sidebar-open');
+    }, 50);
+    return;
+  }
+  sb.style.display = 'flex';
+  const abierta = sb.classList.toggle('abierta');
+  ov.classList.toggle('on', abierta);
+  document.body.classList.toggle('sidebar-open', abierta);
+};
+
+// Cerrar sidebar al seleccionar un recorrido (en móvil)
+document.addEventListener('click', e => {
+  if (window.innerWidth < 680 && e.target.closest('.rec-item')) {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    sb.classList.remove('abierta');
+    ov.classList.remove('on');
+    document.body.classList.remove('sidebar-open');
+  }
+});
+</script>
+</body>
+</html>
